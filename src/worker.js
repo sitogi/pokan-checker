@@ -7,130 +7,445 @@ const HTML = `<!doctype html>
   <style>
     :root {
       color-scheme: light;
+      --bgA: #fff4c7;
+      --bgB: #ffe3f1;
+      --ink: #24324a;
+      --muted: #4c5a76;
+      --surface: #ffffff;
+      --border: #d9e0ff;
+      --shadow: 0 14px 30px rgba(58, 75, 140, 0.18);
+      --accentMouthA: #ffb347;
+      --accentMouthB: #ff5e62;
+      --accentFaceA: #74c0ff;
+      --accentFaceB: #4d7cff;
+      --accentGood: #4cd964;
+      --accentWarn: #ff9f43;
+      --accentAlert: #ff4d6d;
+      --gaugeTrack: rgba(255, 255, 255, 0.75);
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 16px;
-      line-height: 1.5;
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at -10% -20%, #fff7d9 20%, rgba(255, 247, 217, 0) 60%),
+        radial-gradient(900px 500px at 120% -10%, #ffdff0 10%, rgba(255, 223, 240, 0) 60%),
+        linear-gradient(135deg, var(--bgA), var(--bgB));
+      padding: 18px 14px 40px;
     }
-    #wrap {
-      max-width: 560px;
+
+    #app {
+      max-width: 760px;
       margin: 0 auto;
+      display: grid;
+      gap: 16px;
     }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 12px;
+
+    .hero {
+      display: grid;
+      gap: 12px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
     }
-    video {
-      width: 100%;
-      background: #000;
-      border-radius: 12px;
-      transform: scaleX(-1);
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(26px, 5vw, 36px);
+      letter-spacing: 0.02em;
     }
-    button {
-      padding: 12px 16px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: #fff;
+
+    .hero-sub {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hero-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 16px 14px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
       cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+      box-shadow: 0 8px 18px rgba(44, 62, 130, 0.18);
     }
-    button:disabled {
+
+    .btn:active {
+      transform: translateY(1px) scale(0.995);
+      filter: brightness(0.98);
+    }
+
+    .btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+      transform: none;
+      filter: none;
+      box-shadow: none;
     }
-    .row {
-      margin: 10px 0;
+
+    .btn-start {
+      color: #fff;
+      background: linear-gradient(135deg, #ff9a5a, #ff5f7d 55%, #ff4d6d);
+    }
+
+    .btn-stop {
+      color: #283655;
+      background: linear-gradient(135deg, #dbe4ff, #c9d6ff);
+    }
+
+    .stage {
+      display: grid;
+      gap: 12px;
+    }
+
+    .video-card {
+      position: relative;
+      border-radius: 26px;
+      overflow: hidden;
+      border: 3px solid #ffffff;
+      box-shadow: var(--shadow);
+      background: #0f172a;
+      min-height: 280px;
+    }
+
+    video {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #000;
+      transform: scaleX(-1);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(14, 20, 40, 0.25) 0%, rgba(14, 20, 40, 0) 45%, rgba(14, 20, 40, 0.35) 100%);
+    }
+
+    .status-bubble {
+      align-self: center;
+      width: min(92%, 520px);
+      background: rgba(255, 255, 255, 0.92);
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      border-radius: 18px;
+      padding: 10px 14px;
+      text-align: center;
+      box-shadow: 0 10px 24px rgba(31, 45, 99, 0.22);
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+    }
+
+    .status-bubble[data-kind="idle"] {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .status-bubble[data-kind="watching"] {
+      background: rgba(238, 255, 245, 0.95);
+      border-color: rgba(131, 224, 162, 0.95);
+    }
+
+    .status-bubble[data-kind="mouth-warning"],
+    .status-bubble[data-kind="no-face-warning"] {
+      background: rgba(255, 247, 230, 0.96);
+      border-color: rgba(255, 190, 102, 0.95);
+      transform: translateY(-1px);
+    }
+
+    .status-bubble[data-kind="mouth-alert"],
+    .status-bubble[data-kind="no-face-alert"] {
+      background: rgba(255, 232, 238, 0.97);
+      border-color: rgba(255, 112, 150, 0.95);
+      transform: translateY(-2px) scale(1.01);
+    }
+
+    .status-title {
+      font-size: clamp(20px, 4.6vw, 28px);
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .status-sub {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .gauges {
       display: grid;
       gap: 8px;
+      background: rgba(21, 28, 55, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      padding: 10px;
+      backdrop-filter: blur(6px);
     }
-    label {
-      display: block;
-      margin: 6px 0;
+
+    .gauge {
+      display: grid;
+      gap: 6px;
     }
+
+    .gauge-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      color: #f4f7ff;
+      text-shadow: 0 2px 6px rgba(14, 18, 40, 0.55);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-size: 13px;
+    }
+
+    .gauge-count {
+      font-size: 12px;
+      opacity: 0.92;
+      font-weight: 700;
+    }
+
+    .gauge-track {
+      position: relative;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--gaugeTrack);
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+    }
+
+    .gauge-fill {
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      transition: transform 120ms linear;
+      border-radius: 999px;
+    }
+
+    .gauge-mouth .gauge-fill {
+      background: linear-gradient(90deg, var(--accentMouthA), var(--accentMouthB));
+    }
+
+    .gauge-face .gauge-fill {
+      background: linear-gradient(90deg, var(--accentFaceA), var(--accentFaceB));
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .settings-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      background: #f8f9ff;
+      border: 2px solid #e2e7ff;
+      border-radius: 16px;
+      padding: 10px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #31406b;
+      letter-spacing: 0.01em;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .field-row .value {
+      min-width: 52px;
+      text-align: right;
+      font-weight: 800;
+      color: #24324a;
+      background: #ffffff;
+      border: 2px solid #dfe6ff;
+      border-radius: 12px;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+
     input[type="range"] {
       width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ffd2a8, #ffb0c6);
+      outline: none;
+      border: 2px solid #fff;
+      box-shadow: inset 0 2px 6px rgba(64, 37, 72, 0.18);
+      appearance: none;
     }
-    input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #ff7a9c;
+      box-shadow: 0 6px 14px rgba(255, 122, 156, 0.35);
+      cursor: pointer;
     }
+
+    input[type="number"],
     select {
       width: 100%;
-      padding: 8px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-      background: #fff;
-    }
-    #status {
-      margin-top: 8px;
       padding: 10px 12px;
-      border-radius: 10px;
-      background: #f6f7f8;
+      font-size: 16px;
+      border-radius: 14px;
+      border: 2px solid #dfe6ff;
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .debug-text {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #0f172a;
+      color: #e5ecff;
       white-space: pre-wrap;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
+      font-size: 12px;
+      border: 2px solid #1f2a52;
+      min-height: 44px;
     }
-    .hint {
-      color: #444;
-      font-size: 13px;
-      margin-top: 6px;
+
+    @media (min-width: 720px) {
+      .settings-grid {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
 <body>
-<div id="wrap">
-  <h1>おくちポカンチェッカー</h1>
-
-  <video id="cam" autoplay playsinline></video>
-
-  <div class="row" style="grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button id="start">監視開始</button>
-    <button id="stop" disabled>停止</button>
-  </div>
-
-  <div class="row">
-    <label>
-      カメラ:
-      <select id="camera">
-        <option value="user">フロント</option>
-        <option value="environment">リア</option>
-      </select>
-    </label>
-
-    <label>
-      口開き閾値 (jawOpen):
-      <input id="thr" type="range" min="0" max="1" step="0.01" value="0.08" />
-      <span id="thrVal">0.08</span>
-    </label>
-
-    <label>
-      継続判定 (ms):
-      <input id="hold" type="number" value="5000" min="0" step="100" />
-    </label>
-
-    <label>
-      クールダウン (ms):
-      <input id="cool" type="number" value="3000" min="0" step="500" />
-    </label>
-
-    <label>
-      顔未検出アラート (ms):
-      <input id="missing" type="number" value="3000" min="0" step="500" />
-    </label>
-
-    <div class="hint">
-      監視開始ボタンを押してから, カメラ許可を行ってください。
+<div id="app">
+  <section class="hero">
+    <div>
+      <h1>おくちポカンチェッカー</h1>
+      <p class="hero-sub">おくちとおかおを, ぴかっと見守る</p>
     </div>
-  </div>
+    <div class="hero-actions">
+      <button id="start" class="btn btn-start">監視開始</button>
+      <button id="stop" class="btn btn-stop" disabled>停止</button>
+    </div>
+  </section>
 
-  <div id="status">停止中</div>
+  <section class="stage">
+    <div class="video-card">
+      <video id="cam" autoplay playsinline></video>
+      <div class="overlay">
+        <div id="mainStatus" class="status-bubble" data-kind="idle">
+          <div id="mainStatusTitle" class="status-title">待機中</div>
+          <div id="mainStatusSub" class="status-sub">監視開始を押してね</div>
+        </div>
+
+        <div class="gauges">
+          <div class="gauge gauge-mouth">
+            <div class="gauge-head">
+              <span>おくちゲージ</span>
+              <span id="mouthGaugeCount" class="gauge-count">0%</span>
+            </div>
+            <div class="gauge-track">
+              <div id="mouthGaugeFill" class="gauge-fill"></div>
+            </div>
+          </div>
+
+          <div class="gauge gauge-face">
+            <div class="gauge-head">
+              <span>かおなしゲージ</span>
+              <span id="faceGaugeCount" class="gauge-count">0%</span>
+            </div>
+            <div class="gauge-track">
+              <div id="faceGaugeFill" class="gauge-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">設定</div>
+    <div class="settings-grid">
+      <label class="field">
+        <span class="field-label">カメラ</span>
+        <select id="camera">
+          <option value="user">フロント</option>
+          <option value="environment">リア</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">口開き閾値 (jawOpen)</span>
+        <div class="field-row">
+          <input id="thr" type="range" min="0" max="1" step="0.01" value="0.08" />
+          <span id="thrVal" class="value">0.08</span>
+        </div>
+      </label>
+
+      <label class="field">
+        <span class="field-label">継続判定 (ms)</span>
+        <input id="hold" type="number" value="5000" min="0" step="100" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">クールダウン (ms)</span>
+        <input id="cool" type="number" value="3000" min="0" step="500" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">顔未検出アラート (ms)</span>
+        <input id="missing" type="number" value="3000" min="0" step="500" />
+      </label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">状態</div>
+    <div id="status" class="debug-text">停止中</div>
+  </section>
 </div>
 
 <script type="module">
@@ -144,6 +459,13 @@ const HTML = `<!doctype html>
   const startBtn = document.getElementById("start");
   const stopBtn = document.getElementById("stop");
   const statusEl = document.getElementById("status");
+  const mainStatusEl = document.getElementById("mainStatus");
+  const mainStatusTitleEl = document.getElementById("mainStatusTitle");
+  const mainStatusSubEl = document.getElementById("mainStatusSub");
+  const mouthGaugeFillEl = document.getElementById("mouthGaugeFill");
+  const mouthGaugeCountEl = document.getElementById("mouthGaugeCount");
+  const faceGaugeFillEl = document.getElementById("faceGaugeFill");
+  const faceGaugeCountEl = document.getElementById("faceGaugeCount");
 
   const thr = document.getElementById("thr");
   const thrVal = document.getElementById("thrVal");
@@ -216,6 +538,8 @@ const HTML = `<!doctype html>
   }
 
   applySettings(readSettings());
+  resetGauges();
+  setMainStatus("idle", "待機中", "監視開始を押してね");
 
   thr.addEventListener("input", () => {
     thrVal.textContent = Number(thr.value).toFixed(2);
@@ -254,6 +578,38 @@ const HTML = `<!doctype html>
 
   function setStatus(msg) {
     statusEl.textContent = msg;
+  }
+
+  function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  function formatPercent(value) {
+    return Math.round(clamp01(value) * 100) + "%";
+  }
+
+  function progressRatio(elapsedMs, thresholdMs) {
+    if (thresholdMs <= 0) {
+      return elapsedMs > 0 ? 1 : 0;
+    }
+    return elapsedMs / thresholdMs;
+  }
+
+  function setGauge(fillEl, countEl, ratio) {
+    const safeRatio = clamp01(ratio);
+    fillEl.style.transform = "scaleX(" + safeRatio.toFixed(4) + ")";
+    countEl.textContent = formatPercent(safeRatio);
+  }
+
+  function resetGauges() {
+    setGauge(mouthGaugeFillEl, mouthGaugeCountEl, 0);
+    setGauge(faceGaugeFillEl, faceGaugeCountEl, 0);
+  }
+
+  function setMainStatus(kind, title, sub) {
+    mainStatusEl.dataset.kind = kind;
+    mainStatusTitleEl.textContent = title;
+    mainStatusSubEl.textContent = sub;
   }
 
   function getBlendshapeScore(result, name) {
@@ -358,15 +714,18 @@ const HTML = `<!doctype html>
   async function restartStream() {
     if (!running) return;
     setStatus("カメラ切替中...");
+    setMainStatus("idle", "カメラ切替中", "少しまってね");
     const previousStream = stream;
     stream = null;
     stopStreamTracks(previousStream);
     try {
       await startStream();
       setStatus("監視中 (カメラ切替完了)");
+      setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
     } catch (e) {
       console.error(e);
       setStatus("カメラ切替に失敗: " + (e?.message || e));
+      setMainStatus("mouth-alert", "カメラ切替に失敗", "もう一度ためしてね");
     }
   }
 
@@ -408,6 +767,8 @@ const HTML = `<!doctype html>
     running = true;
     startBtn.disabled = true;
     stopBtn.disabled = false;
+    setMainStatus("idle", "準備中", "音声とカメラを準備しています");
+    resetGauges();
 
     // 自動再生規制対策として, クリック内で AudioContext を起動します。
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -431,6 +792,7 @@ const HTML = `<!doctype html>
     lastInferAt = 0;
 
     setStatus("監視中");
+    setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
     loop();
   }
 
@@ -470,6 +832,8 @@ const HTML = `<!doctype html>
     mouthOpenSince = null;
     faceMissingSince = null;
 
+    resetGauges();
+    setMainStatus("idle", "停止中", "監視開始を押してね");
     setStatus("停止中");
   }
 
@@ -496,29 +860,34 @@ const HTML = `<!doctype html>
 
         if (!hasFace) {
           mouthOpenSince = null;
+          setGauge(mouthGaugeFillEl, mouthGaugeCountEl, 0);
           if (faceMissingSince === null) {
             faceMissingSince = nowMs;
           }
           const missingFor = nowMs - faceMissingSince;
-          if (missingFor >= missingMs && nowMs - lastAlertAt >= coolMs) {
+          const missingRatio = progressRatio(missingFor, missingMs);
+          setGauge(faceGaugeFillEl, faceGaugeCountEl, missingRatio);
+          const reachedNoFaceAlert = missingFor >= missingMs;
+          if (reachedNoFaceAlert && nowMs - lastAlertAt >= coolMs) {
             lastAlertAt = nowMs;
             playAlert("noFace");
-            setStatus(
-              "顔が検出できません\\n" +
-                "missingFor=" +
-                Math.round(missingFor) +
-                "ms"
-            );
-          } else {
-            setStatus(
-              "顔が検出できません (監視中)\\n" +
-                "missingFor=" +
-                Math.round(missingFor) +
-                "ms"
-            );
           }
+          if (reachedNoFaceAlert) {
+            setMainStatus("no-face-alert", "おかおが見つからない", "カメラの前に戻ってね");
+          } else {
+            setMainStatus("no-face-warning", "おかおが見えない", "ゲージがたまっています");
+          }
+          setStatus(
+            "顔が検出できません\\n" +
+              "missingFor=" +
+              Math.round(missingFor) +
+              "ms missingMs=" +
+              Math.round(missingMs) +
+              "ms"
+          );
         } else {
           faceMissingSince = null;
+          setGauge(faceGaugeFillEl, faceGaugeCountEl, 0);
 
           const jawOpen = getBlendshapeScore(result, "jawOpen");
           const mouthClose = getBlendshapeScore(result, "mouthClose");
@@ -532,19 +901,36 @@ const HTML = `<!doctype html>
             }
 
             const openFor = nowMs - mouthOpenSince;
-            if (openFor >= holdMs && nowMs - lastAlertAt >= coolMs) {
+            const openRatio = progressRatio(openFor, holdMs);
+            setGauge(mouthGaugeFillEl, mouthGaugeCountEl, openRatio);
+            const reachedAlert = openFor >= holdMs;
+            if (reachedAlert && nowMs - lastAlertAt >= coolMs) {
               lastAlertAt = nowMs;
               playAlert("mouth");
+            }
+            if (reachedAlert) {
+              setMainStatus("mouth-alert", "おくちポカン発見", "いったんおくちを閉じよう");
               setStatus(
                 "口が開いています\\n" +
+                  "openFor=" +
+                  Math.round(openFor) +
+                  "ms holdMs=" +
+                  Math.round(holdMs) +
+                  "ms\\n" +
                   "jawOpen=" +
                   jawOpen.toFixed(2) +
                   " mouthClose=" +
                   mouthClose.toFixed(2)
               );
             } else {
+              setMainStatus("mouth-warning", "おくちが開き気味", "ゲージがたまっています");
               setStatus(
                 "監視中 (開き気味)\\n" +
+                  "openFor=" +
+                  Math.round(openFor) +
+                  "ms holdMs=" +
+                  Math.round(holdMs) +
+                  "ms\\n" +
                   "jawOpen=" +
                   jawOpen.toFixed(2) +
                   " mouthClose=" +
@@ -553,6 +939,8 @@ const HTML = `<!doctype html>
             }
           } else {
             mouthOpenSince = null;
+            setGauge(mouthGaugeFillEl, mouthGaugeCountEl, 0);
+            setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
             setStatus(
               "監視中\\n" +
                 "jawOpen=" +
