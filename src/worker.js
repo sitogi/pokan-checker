@@ -127,14 +127,16 @@ const HTML = `<!doctype html>
       border: 3px solid #ffffff;
       box-shadow: var(--shadow);
       background: #0f172a;
-      min-height: clamp(380px, 62vh, 640px);
+      height: clamp(380px, 62vh, 640px);
     }
 
     video {
+      position: absolute;
+      inset: 0;
       width: 100%;
-      height: auto;
-      display: block;
+      height: 100%;
       background: #0f172a;
+      object-fit: cover;
       transform: scaleX(-1);
     }
 
