@@ -3,7 +3,7 @@ const HTML = `<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>口ポカン 見守り (Android / ブラウザ)</title>
+  <title>おくちポカンチェッカー</title>
   <style>
     :root {
       color-scheme: light;
@@ -59,6 +59,15 @@ const HTML = `<!doctype html>
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
+    select {
+      width: 100%;
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      background: #fff;
+    }
     #status {
       margin-top: 8px;
       padding: 10px 12px;
@@ -77,24 +86,32 @@ const HTML = `<!doctype html>
 </head>
 <body>
 <div id="wrap">
-  <h1>口ポカン 見守り (Workers 版)</h1>
+  <h1>おくちポカンチェッカー</h1>
 
   <video id="cam" autoplay playsinline></video>
 
   <div class="row" style="grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button id="start">監視 開始</button>
+    <button id="start">監視開始</button>
     <button id="stop" disabled>停止</button>
   </div>
 
   <div class="row">
     <label>
-      口開き 閾値 (jawOpen):
+      カメラ:
+      <select id="camera">
+        <option value="user">フロント</option>
+        <option value="environment">リア</option>
+      </select>
+    </label>
+
+    <label>
+      口開き閾値 (jawOpen):
       <input id="thr" type="range" min="0" max="1" step="0.01" value="0.08" />
       <span id="thrVal">0.08</span>
     </label>
 
     <label>
-      継続 判定 (ms):
+      継続判定 (ms):
       <input id="hold" type="number" value="5000" min="0" step="100" />
     </label>
 
@@ -104,16 +121,16 @@ const HTML = `<!doctype html>
     </label>
 
     <label>
-      推論 FPS (軽量化 用, 推奨 10-15):
-      <input id="fps" type="number" value="10" min="1" max="30" step="1" />
+      顔未検出アラート (ms):
+      <input id="missing" type="number" value="3000" min="0" step="500" />
     </label>
 
     <div class="hint">
-      監視 開始 ボタン を 押してから, カメラ 許可 を 行ってください。HTTPS 配信 が 前提です。
+      監視開始ボタンを押してから, カメラ許可を行ってください。
     </div>
   </div>
 
-  <div id="status">停止 中</div>
+  <div id="status">停止中</div>
 </div>
 
 <script type="module">
@@ -132,11 +149,88 @@ const HTML = `<!doctype html>
   const thrVal = document.getElementById("thrVal");
   const holdInput = document.getElementById("hold");
   const coolInput = document.getElementById("cool");
-  const fpsInput = document.getElementById("fps");
-  const ALERT_AUDIO_URL = "/zundamon-alert.wav";
+  const missingInput = document.getElementById("missing");
+  const cameraSelect = document.getElementById("camera");
+  const MOUTH_ALERT_AUDIO_URL = "/zundamon-alert.wav";
+  const NO_FACE_ALERT_AUDIO_URL = "/no-face-alert.wav";
+  const STORAGE_KEY = "pokanChecker.settings.v1";
+  const TARGET_FPS = 10;
+
+  const defaultSettings = {
+    camera: "user",
+    threshold: 0.08,
+    holdMs: 5000,
+    coolMs: 3000,
+    missingMs: 3000,
+  };
+
+  function safeNumber(value, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function readSettings() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { ...defaultSettings };
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return { ...defaultSettings };
+      return { ...defaultSettings, ...parsed };
+    } catch (e) {
+      console.warn("localStorage の読込に失敗:", e);
+      return { ...defaultSettings };
+    }
+  }
+
+  function collectSettings() {
+    return {
+      camera: cameraSelect.value || defaultSettings.camera,
+      threshold: safeNumber(thr.value, defaultSettings.threshold),
+      holdMs: safeNumber(holdInput.value, defaultSettings.holdMs),
+      coolMs: safeNumber(coolInput.value, defaultSettings.coolMs),
+      missingMs: safeNumber(missingInput.value, defaultSettings.missingMs),
+    };
+  }
+
+  function persistSettings() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collectSettings()));
+    } catch (e) {
+      console.warn("localStorage への保存に失敗:", e);
+    }
+  }
+
+  function updateVideoMirror() {
+    const mode = cameraSelect.value || defaultSettings.camera;
+    video.style.transform = mode === "user" ? "scaleX(-1)" : "none";
+  }
+
+  function applySettings(settings) {
+    cameraSelect.value = settings.camera || defaultSettings.camera;
+    thr.value = String(safeNumber(settings.threshold, defaultSettings.threshold));
+    holdInput.value = String(safeNumber(settings.holdMs, defaultSettings.holdMs));
+    coolInput.value = String(safeNumber(settings.coolMs, defaultSettings.coolMs));
+    missingInput.value = String(safeNumber(settings.missingMs, defaultSettings.missingMs));
+    thrVal.textContent = safeNumber(thr.value, defaultSettings.threshold).toFixed(2);
+    updateVideoMirror();
+  }
+
+  applySettings(readSettings());
 
   thr.addEventListener("input", () => {
     thrVal.textContent = Number(thr.value).toFixed(2);
+    persistSettings();
+  });
+
+  holdInput.addEventListener("input", persistSettings);
+  coolInput.addEventListener("input", persistSettings);
+  missingInput.addEventListener("input", persistSettings);
+  cameraSelect.addEventListener("change", () => {
+    updateVideoMirror();
+    persistSettings();
+    if (running) {
+      restartStream();
+    }
   });
 
   let stream = null;
@@ -144,15 +238,17 @@ const HTML = `<!doctype html>
   let running = false;
   let rafId = null;
 
-  // 音 は ユーザー 操作 内 で 解禁 します。
+  // 音はユーザー操作内で解禁します。
   let audioCtx = null;
-  let alertAudioBuffer = null;
+  let mouthAlertAudioBuffer = null;
+  let noFaceAlertAudioBuffer = null;
 
-  // Wake Lock は 使える 環境 のみ 利用 します。
+  // Wake Lock は使える環境のみ利用します。
   let wakeLock = null;
 
-  // 判定 用 の 状態 です。
+  // 判定用の状態です。
   let mouthOpenSince = null;
+  let faceMissingSince = null;
   let lastAlertAt = 0;
   let lastInferAt = 0;
 
@@ -173,39 +269,53 @@ const HTML = `<!doctype html>
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.frequency.value = 880;
-    gain.gain.value = 0.4;
+    gain.gain.value = 1.0;
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(now);
     osc.stop(now + 0.12);
   }
 
-  async function loadAlertAudio() {
-    if (!audioCtx) return;
+  async function loadAudioBuffer(url, label) {
+    if (!audioCtx) return null;
     try {
-      const response = await fetch(ALERT_AUDIO_URL, { cache: "no-store" });
+      const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) {
-        console.warn("音声 ファイル の 読込 に 失敗:", response.status, response.statusText);
-        alertAudioBuffer = null;
-        return;
+        console.warn(label + "の読込に失敗:", response.status, response.statusText);
+        return null;
       }
       const audioData = await response.arrayBuffer();
-      alertAudioBuffer = await audioCtx.decodeAudioData(audioData);
+      return await audioCtx.decodeAudioData(audioData);
     } catch (e) {
-      console.warn("音声 ファイル の 読込 に 失敗:", e);
-      alertAudioBuffer = null;
+      console.warn(label + "の読込に失敗:", e);
+      return null;
     }
   }
 
-  function playAlert() {
+  async function loadAlertAudios() {
+    const results = await Promise.all([
+      loadAudioBuffer(MOUTH_ALERT_AUDIO_URL, "口アラート音声"),
+      loadAudioBuffer(NO_FACE_ALERT_AUDIO_URL, "顔未検出アラート音声"),
+    ]);
+    mouthAlertAudioBuffer = results[0];
+    noFaceAlertAudioBuffer = results[1];
+  }
+
+  function playAlert(kind) {
     if (!audioCtx) return;
-    if (!alertAudioBuffer) {
-      // 音声 が 無い 場合 は, 既存 の ビープ に フォールバック します。
+    let buffer = null;
+    if (kind === "noFace") {
+      buffer = noFaceAlertAudioBuffer || mouthAlertAudioBuffer;
+    } else {
+      buffer = mouthAlertAudioBuffer || noFaceAlertAudioBuffer;
+    }
+    if (!buffer) {
+      // 音声が無い場合は, 既存のビープにフォールバックします。
       beep();
       return;
     }
     const source = audioCtx.createBufferSource();
     const gain = audioCtx.createGain();
-    source.buffer = alertAudioBuffer;
+    source.buffer = buffer;
     gain.gain.value = 1.0;
     source.connect(gain).connect(audioCtx.destination);
     source.start();
@@ -221,7 +331,42 @@ const HTML = `<!doctype html>
         }
       });
     } catch (e) {
-      console.warn("Wake Lock の 取得 に 失敗:", e);
+      console.warn("Wake Lock の取得に失敗:", e);
+    }
+  }
+
+  function stopStreamTracks(currentStream) {
+    if (!currentStream) return;
+    currentStream.getTracks().forEach((t) => t.stop());
+  }
+
+  async function startStream() {
+    updateVideoMirror();
+    const facingMode = cameraSelect.value || defaultSettings.camera;
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode,
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+  }
+
+  async function restartStream() {
+    if (!running) return;
+    setStatus("カメラ切替中...");
+    const previousStream = stream;
+    stream = null;
+    stopStreamTracks(previousStream);
+    try {
+      await startStream();
+      setStatus("監視中 (カメラ切替完了)");
+    } catch (e) {
+      console.error(e);
+      setStatus("カメラ切替に失敗: " + (e?.message || e));
     }
   }
 
@@ -233,7 +378,7 @@ const HTML = `<!doctype html>
     const modelAssetPath =
       "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
-    // GPU が 合わない 端末 に 備えて, CPU へ フォールバック します。
+    // GPU が合わない端末に備えて, CPU へフォールバックします。
     try {
       faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
         baseOptions: {
@@ -245,7 +390,7 @@ const HTML = `<!doctype html>
         outputFaceBlendshapes: true,
       });
     } catch (gpuError) {
-      console.warn("GPU に 失敗 した ため, CPU へ フォールバック:", gpuError);
+      console.warn("GPU に失敗したため, CPU へフォールバック:", gpuError);
       faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
         baseOptions: {
           modelAssetPath,
@@ -264,37 +409,28 @@ const HTML = `<!doctype html>
     startBtn.disabled = true;
     stopBtn.disabled = false;
 
-    // 自動 再生 規制 対策 として, クリック 内 で AudioContext を 起動 します。
+    // 自動再生規制対策として, クリック内で AudioContext を起動します。
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     await audioCtx.resume();
 
-    setStatus("音声 読込 中...");
-    await loadAlertAudio();
+    setStatus("音声読込中...");
+    await loadAlertAudios();
 
-    setStatus("カメラ 初期化 中...");
+    setStatus("カメラ初期化中...");
+    persistSettings();
+    await startStream();
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-      },
-      audio: false,
-    });
-
-    video.srcObject = stream;
-    await video.play();
-
-    setStatus("モデル 読込 中... (初回 は 少し 時間 が かかります)");
+    setStatus("モデル読込中... (初回は少し時間がかかります)");
     await initLandmarker();
 
     await requestWakeLock();
 
     mouthOpenSince = null;
+    faceMissingSince = null;
     lastAlertAt = 0;
     lastInferAt = 0;
 
-    setStatus("監視 中");
+    setStatus("監視中");
     loop();
   }
 
@@ -308,17 +444,15 @@ const HTML = `<!doctype html>
       rafId = null;
     }
 
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      stream = null;
-    }
+    stopStreamTracks(stream);
+    stream = null;
     video.srcObject = null;
 
     if (wakeLock) {
       try {
         wakeLock.release();
       } catch (e) {
-        console.warn("Wake Lock の 解放 に 失敗:", e);
+        console.warn("Wake Lock の解放に失敗:", e);
       }
       wakeLock = null;
     }
@@ -327,13 +461,16 @@ const HTML = `<!doctype html>
       try {
         audioCtx.close();
       } catch (e) {
-        console.warn("AudioContext の 終了 に 失敗:", e);
+        console.warn("AudioContext の終了に失敗:", e);
       }
       audioCtx = null;
     }
-    alertAudioBuffer = null;
+    mouthAlertAudioBuffer = null;
+    noFaceAlertAudioBuffer = null;
+    mouthOpenSince = null;
+    faceMissingSince = null;
 
-    setStatus("停止 中");
+    setStatus("停止中");
   }
 
   function loop() {
@@ -341,59 +478,89 @@ const HTML = `<!doctype html>
 
     if (video.readyState >= 2 && faceLandmarker) {
       const nowMs = performance.now();
-      const targetFps = Math.max(1, Math.min(30, Number(fpsInput.value || 10)));
-      const interval = 1000 / targetFps;
+      const interval = 1000 / TARGET_FPS;
 
       if (nowMs - lastInferAt >= interval) {
         lastInferAt = nowMs;
 
-        // detectForVideo(video, timestampMs) は 同期 実行 です。
+        // detectForVideo(video, timestampMs) は同期実行です。
         const result = faceLandmarker.detectForVideo(video, nowMs);
 
-        const jawOpen = getBlendshapeScore(result, "jawOpen");
-        const mouthClose = getBlendshapeScore(result, "mouthClose");
+        const openThr = safeNumber(thr.value, defaultSettings.threshold);
+        const holdMs = Math.max(0, safeNumber(holdInput.value, defaultSettings.holdMs));
+        const coolMs = Math.max(0, safeNumber(coolInput.value, defaultSettings.coolMs));
+        const missingMs = Math.max(0, safeNumber(missingInput.value, defaultSettings.missingMs));
 
-        const openThr = Number(thr.value);
-        const holdMs = Number(holdInput.value);
-        const coolMs = Number(coolInput.value);
+        const faceCount = result?.faceLandmarks?.length ?? 0;
+        const hasFace = faceCount > 0;
 
-        // 口 が 開いている 判定 を シンプル に 行います。
-        const isOpen = jawOpen >= openThr && mouthClose < 0.5;
-
-        if (isOpen) {
-          if (mouthOpenSince === null) {
-            mouthOpenSince = nowMs;
+        if (!hasFace) {
+          mouthOpenSince = null;
+          if (faceMissingSince === null) {
+            faceMissingSince = nowMs;
           }
-
-          const openFor = nowMs - mouthOpenSince;
-          if (openFor >= holdMs && nowMs - lastAlertAt >= coolMs) {
+          const missingFor = nowMs - faceMissingSince;
+          if (missingFor >= missingMs && nowMs - lastAlertAt >= coolMs) {
             lastAlertAt = nowMs;
-            playAlert();
+            playAlert("noFace");
             setStatus(
-              "口 が 開いています\\n" +
-                "jawOpen=" +
-                jawOpen.toFixed(2) +
-                " mouthClose=" +
-                mouthClose.toFixed(2)
+              "顔が検出できません\\n" +
+                "missingFor=" +
+                Math.round(missingFor) +
+                "ms"
             );
           } else {
             setStatus(
-              "監視 中 (開き 気味)\\n" +
+              "顔が検出できません (監視中)\\n" +
+                "missingFor=" +
+                Math.round(missingFor) +
+                "ms"
+            );
+          }
+        } else {
+          faceMissingSince = null;
+
+          const jawOpen = getBlendshapeScore(result, "jawOpen");
+          const mouthClose = getBlendshapeScore(result, "mouthClose");
+
+          // 口が開いている判定をシンプルに行います。
+          const isOpen = jawOpen >= openThr && mouthClose < 0.5;
+
+          if (isOpen) {
+            if (mouthOpenSince === null) {
+              mouthOpenSince = nowMs;
+            }
+
+            const openFor = nowMs - mouthOpenSince;
+            if (openFor >= holdMs && nowMs - lastAlertAt >= coolMs) {
+              lastAlertAt = nowMs;
+              playAlert("mouth");
+              setStatus(
+                "口が開いています\\n" +
+                  "jawOpen=" +
+                  jawOpen.toFixed(2) +
+                  " mouthClose=" +
+                  mouthClose.toFixed(2)
+              );
+            } else {
+              setStatus(
+                "監視中 (開き気味)\\n" +
+                  "jawOpen=" +
+                  jawOpen.toFixed(2) +
+                  " mouthClose=" +
+                  mouthClose.toFixed(2)
+              );
+            }
+          } else {
+            mouthOpenSince = null;
+            setStatus(
+              "監視中\\n" +
                 "jawOpen=" +
                 jawOpen.toFixed(2) +
                 " mouthClose=" +
                 mouthClose.toFixed(2)
             );
           }
-        } else {
-          mouthOpenSince = null;
-          setStatus(
-            "監視 中\\n" +
-              "jawOpen=" +
-              jawOpen.toFixed(2) +
-              " mouthClose=" +
-              mouthClose.toFixed(2)
-          );
         }
       }
     }
@@ -404,7 +571,7 @@ const HTML = `<!doctype html>
   startBtn.addEventListener("click", () => {
     start().catch((e) => {
       console.error(e);
-      setStatus("開始 に 失敗: " + (e?.message || e));
+      setStatus("開始に失敗: " + (e?.message || e));
       stop();
     });
   });
