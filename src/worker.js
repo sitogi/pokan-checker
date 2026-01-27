@@ -414,7 +414,7 @@ const HTML = `<!doctype html>
       <video id="cam" autoplay playsinline></video>
       <div class="overlay">
         <div id="mainStatus" class="status-bubble" data-kind="idle">
-          <div id="mainStatusTitle" class="status-title">待機中</div>
+          <div id="mainStatusTitle" class="status-title">🙂 待機中</div>
           <div id="mainStatusSub" class="status-sub">チェック開始を押してね</div>
         </div>
 
@@ -609,7 +609,7 @@ const HTML = `<!doctype html>
 
   applySettings(readSettings());
   resetGauges();
-  setMainStatus("idle", "待機中", "チェック開始を押してね");
+  setMainStatus("idle", "🙂 待機中", "チェック開始を押してね");
   syncControls();
 
   thr.addEventListener("input", () => {
@@ -766,18 +766,18 @@ const HTML = `<!doctype html>
   async function restartStream() {
     if (!running) return;
     setStatus("カメラ切替中...");
-    setMainStatus("idle", "カメラ切替中", "少しまってね");
+    setMainStatus("idle", "🔄 カメラ切替中", "少しまってね");
     const previousStream = stream;
     stream = null;
     stopStreamTracks(previousStream);
     try {
       await startStream();
       setStatus("監視中 (カメラ切替完了)");
-      setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
+      setMainStatus("watching", "✅ いい感じ", "おくちが閉じられているよ");
     } catch (e) {
       console.error(e);
       setStatus("カメラ切替に失敗: " + (e?.message || e));
-      setMainStatus("mouth-alert", "カメラ切替に失敗", "もう一度ためしてね");
+      setMainStatus("mouth-alert", "⚠️ カメラ切替に失敗", "もう一度ためしてね");
     }
   }
 
@@ -820,7 +820,7 @@ const HTML = `<!doctype html>
     syncControls();
     running = true;
     syncControls();
-    setMainStatus("idle", "準備中", "音声とカメラを準備しています");
+    setMainStatus("idle", "⏳ 準備中", "音声とカメラを準備しています");
     resetGauges();
 
     try {
@@ -853,7 +853,7 @@ const HTML = `<!doctype html>
     }
 
     setStatus("監視中");
-    setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
+    setMainStatus("watching", "✅ いい感じ", "おくちが閉じられているよ");
     loop();
   }
 
@@ -894,7 +894,7 @@ const HTML = `<!doctype html>
     faceMissingSince = null;
 
     resetGauges();
-    setMainStatus("idle", "停止中", "チェック開始を押してね");
+    setMainStatus("idle", "🛑 停止中", "チェック開始を押してね");
     setStatus("停止中");
   }
 
@@ -934,9 +934,9 @@ const HTML = `<!doctype html>
             playAlert("noFace");
           }
           if (reachedNoFaceAlert) {
-            setMainStatus("no-face-alert", "おかおが見つからない", "カメラの前に戻ってね");
+            setMainStatus("no-face-alert", "🙈 おかおが見つからない", "カメラの前に戻ってね");
           } else {
-            setMainStatus("no-face-warning", "おかおが見えない", "ゲージがたまっています");
+            setMainStatus("no-face-warning", "👀 おかおが見えない", "ゲージがたまっています");
           }
           setStatus(
             "顔が検出できません\\n" +
@@ -970,7 +970,7 @@ const HTML = `<!doctype html>
               playAlert("mouth");
             }
             if (reachedAlert) {
-              setMainStatus("mouth-alert", "おくちポカン発見", "いったんおくちを閉じよう");
+              setMainStatus("mouth-alert", "😮 おくちポカン発見", "いったんおくちを閉じよう");
               setStatus(
                 "口が開いています\\n" +
                   "openFor=" +
@@ -984,7 +984,7 @@ const HTML = `<!doctype html>
                   mouthClose.toFixed(2)
               );
             } else {
-              setMainStatus("mouth-warning", "おくちが開き気味", "ゲージがたまっています");
+              setMainStatus("mouth-warning", "😮 おくちが開き気味", "ゲージがたまっています");
               setStatus(
                 "監視中 (開き気味)\\n" +
                   "openFor=" +
@@ -1001,7 +1001,7 @@ const HTML = `<!doctype html>
           } else {
             mouthOpenSince = null;
             setGauge(mouthGaugeFillEl, mouthGaugeCountEl, 0);
-            setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
+            setMainStatus("watching", "✅ いい感じ", "おくちが閉じられているよ");
             setStatus(
               "監視中\\n" +
                 "jawOpen=" +
