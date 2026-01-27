@@ -115,6 +115,11 @@ const HTML = `<!doctype html>
       gap: 12px;
     }
 
+    .stage-actions {
+      display: flex;
+      justify-content: center;
+    }
+
     .video-card {
       position: relative;
       border-radius: 26px;
@@ -122,31 +127,57 @@ const HTML = `<!doctype html>
       border: 3px solid #ffffff;
       box-shadow: var(--shadow);
       background: #0f172a;
-      min-height: 280px;
+      min-height: clamp(380px, 62vh, 640px);
     }
 
     video {
       width: 100%;
       height: auto;
       display: block;
-      background: #000;
+      background: #0f172a;
       transform: scaleX(-1);
     }
 
     .overlay {
       position: absolute;
       inset: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 8px;
       pointer-events: none;
-      background: linear-gradient(180deg, rgba(14, 20, 40, 0.25) 0%, rgba(14, 20, 40, 0) 45%, rgba(14, 20, 40, 0.35) 100%);
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.28);
+    }
+
+    .btn-stage {
+      width: min(96%, 520px);
+      padding: 18px 18px;
+      font-size: clamp(24px, 6vw, 32px);
+      border-radius: 28px;
+      border: 3px solid #ffffff;
+      box-shadow: 0 18px 36px rgba(255, 88, 128, 0.42);
+    }
+
+    .btn-stage[data-state="idle"] {
+      background: linear-gradient(135deg, #ffb36b, #ff6f91 55%, #ff4d6d);
+      color: #ffffff;
+    }
+
+    .btn-stage[data-state="starting"] {
+      background: linear-gradient(135deg, #ffd36a, #ffb347 60%, #ff9f43);
+      color: #3a2a00;
+      box-shadow: 0 18px 36px rgba(255, 179, 71, 0.42);
+    }
+
+    .btn-stage[data-state="running"] {
+      background: linear-gradient(135deg, #8aa4ff, #5b7cfa 55%, #4d7cff);
+      color: #ffffff;
+      box-shadow: 0 18px 36px rgba(77, 124, 255, 0.42);
     }
 
     .status-bubble {
-      align-self: center;
-      width: min(92%, 520px);
+      justify-self: center;
+      width: min(100%, 520px);
       background: rgba(255, 255, 255, 0.92);
       border: 2px solid rgba(255, 255, 255, 0.9);
       border-radius: 18px;
@@ -154,6 +185,9 @@ const HTML = `<!doctype html>
       text-align: center;
       box-shadow: 0 10px 24px rgba(31, 45, 99, 0.22);
       transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      pointer-events: none;
+      align-self: start;
+      margin-top: 0;
     }
 
     .status-bubble[data-kind="idle"] {
@@ -200,6 +234,8 @@ const HTML = `<!doctype html>
       border-radius: 16px;
       padding: 10px;
       backdrop-filter: blur(6px);
+      align-self: end;
+      pointer-events: none;
     }
 
     .gauge {
@@ -364,21 +400,20 @@ const HTML = `<!doctype html>
   <section class="hero">
     <div>
       <h1>おくちポカンチェッカー</h1>
-      <p class="hero-sub">おくちとおかおを, ぴかっと見守る</p>
-    </div>
-    <div class="hero-actions">
-      <button id="start" class="btn btn-start">監視開始</button>
-      <button id="stop" class="btn btn-stop" disabled>停止</button>
+      <p class="hero-sub">おくちとおかおをぴかっと見守る</p>
     </div>
   </section>
 
   <section class="stage">
+    <div class="stage-actions">
+      <button id="start" class="btn btn-stage" type="button" data-state="idle">チェック開始</button>
+    </div>
     <div class="video-card">
       <video id="cam" autoplay playsinline></video>
       <div class="overlay">
         <div id="mainStatus" class="status-bubble" data-kind="idle">
           <div id="mainStatusTitle" class="status-title">待機中</div>
-          <div id="mainStatusSub" class="status-sub">監視開始を押してね</div>
+          <div id="mainStatusSub" class="status-sub">チェック開始を押してね</div>
         </div>
 
         <div class="gauges">
@@ -457,7 +492,6 @@ const HTML = `<!doctype html>
 
   const video = document.getElementById("cam");
   const startBtn = document.getElementById("start");
-  const stopBtn = document.getElementById("stop");
   const statusEl = document.getElementById("status");
   const mainStatusEl = document.getElementById("mainStatus");
   const mainStatusTitleEl = document.getElementById("mainStatusTitle");
@@ -485,6 +519,26 @@ const HTML = `<!doctype html>
     coolMs: 3000,
     missingMs: 3000,
   };
+
+  let stream = null;
+  let faceLandmarker = null;
+  let running = false;
+  let starting = false;
+  let rafId = null;
+
+  // 音はユーザー操作内で解禁します。
+  let audioCtx = null;
+  let mouthAlertAudioBuffer = null;
+  let noFaceAlertAudioBuffer = null;
+
+  // Wake Lock は使える環境のみ利用します。
+  let wakeLock = null;
+
+  // 判定用の状態です。
+  let mouthOpenSince = null;
+  let faceMissingSince = null;
+  let lastAlertAt = 0;
+  let lastInferAt = 0;
 
   function safeNumber(value, fallback) {
     const n = Number(value);
@@ -527,6 +581,20 @@ const HTML = `<!doctype html>
     video.style.transform = mode === "user" ? "scaleX(-1)" : "none";
   }
 
+  function syncControls() {
+    const state = starting ? "starting" : running ? "running" : "idle";
+    startBtn.dataset.state = state;
+    startBtn.disabled = starting;
+    if (state === "running") {
+      startBtn.textContent = "停止";
+    } else if (state === "starting") {
+      startBtn.textContent = "準備中";
+    } else {
+      startBtn.textContent = "チェック開始";
+    }
+    startBtn.setAttribute("aria-label", startBtn.textContent);
+  }
+
   function applySettings(settings) {
     cameraSelect.value = settings.camera || defaultSettings.camera;
     thr.value = String(safeNumber(settings.threshold, defaultSettings.threshold));
@@ -539,7 +607,8 @@ const HTML = `<!doctype html>
 
   applySettings(readSettings());
   resetGauges();
-  setMainStatus("idle", "待機中", "監視開始を押してね");
+  setMainStatus("idle", "待機中", "チェック開始を押してね");
+  syncControls();
 
   thr.addEventListener("input", () => {
     thrVal.textContent = Number(thr.value).toFixed(2);
@@ -556,25 +625,6 @@ const HTML = `<!doctype html>
       restartStream();
     }
   });
-
-  let stream = null;
-  let faceLandmarker = null;
-  let running = false;
-  let rafId = null;
-
-  // 音はユーザー操作内で解禁します。
-  let audioCtx = null;
-  let mouthAlertAudioBuffer = null;
-  let noFaceAlertAudioBuffer = null;
-
-  // Wake Lock は使える環境のみ利用します。
-  let wakeLock = null;
-
-  // 判定用の状態です。
-  let mouthOpenSince = null;
-  let faceMissingSince = null;
-  let lastAlertAt = 0;
-  let lastInferAt = 0;
 
   function setStatus(msg) {
     statusEl.textContent = msg;
@@ -763,33 +813,42 @@ const HTML = `<!doctype html>
   }
 
   async function start() {
-    if (running) return;
+    if (running || starting) return;
+    starting = true;
+    syncControls();
     running = true;
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
+    syncControls();
     setMainStatus("idle", "準備中", "音声とカメラを準備しています");
     resetGauges();
 
-    // 自動再生規制対策として, クリック内で AudioContext を起動します。
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
+    try {
+      // 自動再生規制対策として, クリック内で AudioContext を起動します。
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
 
-    setStatus("音声読込中...");
-    await loadAlertAudios();
+      setStatus("音声読込中...");
+      await loadAlertAudios();
 
-    setStatus("カメラ初期化中...");
-    persistSettings();
-    await startStream();
+      setStatus("カメラ初期化中...");
+      persistSettings();
+      await startStream();
 
-    setStatus("モデル読込中... (初回は少し時間がかかります)");
-    await initLandmarker();
+      setStatus("モデル読込中... (初回は少し時間がかかります)");
+      await initLandmarker();
 
-    await requestWakeLock();
+      await requestWakeLock();
 
-    mouthOpenSince = null;
-    faceMissingSince = null;
-    lastAlertAt = 0;
-    lastInferAt = 0;
+      mouthOpenSince = null;
+      faceMissingSince = null;
+      lastAlertAt = 0;
+      lastInferAt = 0;
+    } catch (e) {
+      running = false;
+      throw e;
+    } finally {
+      starting = false;
+      syncControls();
+    }
 
     setStatus("監視中");
     setMainStatus("watching", "いい感じ", "おくちが閉じられているよ");
@@ -797,9 +856,9 @@ const HTML = `<!doctype html>
   }
 
   function stop() {
+    starting = false;
     running = false;
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+    syncControls();
 
     if (rafId) {
       cancelAnimationFrame(rafId);
@@ -833,7 +892,7 @@ const HTML = `<!doctype html>
     faceMissingSince = null;
 
     resetGauges();
-    setMainStatus("idle", "停止中", "監視開始を押してね");
+    setMainStatus("idle", "停止中", "チェック開始を押してね");
     setStatus("停止中");
   }
 
@@ -957,13 +1016,16 @@ const HTML = `<!doctype html>
   }
 
   startBtn.addEventListener("click", () => {
+    if (running && !starting) {
+      stop();
+      return;
+    }
     start().catch((e) => {
       console.error(e);
       setStatus("開始に失敗: " + (e?.message || e));
       stop();
     });
   });
-  stopBtn.addEventListener("click", stop);
 </script>
 </body>
 </html>
