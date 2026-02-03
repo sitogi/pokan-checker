@@ -331,6 +331,11 @@ const HTML = `<!doctype html>
       gap: 8px;
     }
 
+    .field-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
     .field-row .value {
       min-width: 52px;
       text-align: right;
@@ -463,6 +468,15 @@ const HTML = `<!doctype html>
       </label>
 
       <label class="field">
+        <span class="field-label">ズーム</span>
+        <div class="field-row">
+          <input id="zoom" type="range" min="1" max="1" step="0.1" value="1" />
+          <span id="zoomVal" class="value">1.00x</span>
+        </div>
+        <span id="zoomHint" class="field-note">対応端末のみ利用できます</span>
+      </label>
+
+      <label class="field">
         <span class="field-label">継続判定 (ms)</span>
         <input id="hold" type="number" value="5000" min="0" step="100" />
       </label>
@@ -505,6 +519,9 @@ const HTML = `<!doctype html>
 
   const thr = document.getElementById("thr");
   const thrVal = document.getElementById("thrVal");
+  const zoomInput = document.getElementById("zoom");
+  const zoomVal = document.getElementById("zoomVal");
+  const zoomHint = document.getElementById("zoomHint");
   const holdInput = document.getElementById("hold");
   const coolInput = document.getElementById("cool");
   const missingInput = document.getElementById("missing");
@@ -517,12 +534,14 @@ const HTML = `<!doctype html>
   const defaultSettings = {
     camera: "user",
     threshold: 0.08,
+    zoom: 1,
     holdMs: 5000,
     coolMs: 3000,
     missingMs: 3000,
   };
 
   let stream = null;
+  let zoomCapabilities = null;
   let faceLandmarker = null;
   let running = false;
   let starting = false;
@@ -564,6 +583,7 @@ const HTML = `<!doctype html>
     return {
       camera: cameraSelect.value || defaultSettings.camera,
       threshold: safeNumber(thr.value, defaultSettings.threshold),
+      zoom: safeNumber(zoomInput.value, defaultSettings.zoom),
       holdMs: safeNumber(holdInput.value, defaultSettings.holdMs),
       coolMs: safeNumber(coolInput.value, defaultSettings.coolMs),
       missingMs: safeNumber(missingInput.value, defaultSettings.missingMs),
@@ -600,14 +620,17 @@ const HTML = `<!doctype html>
   function applySettings(settings) {
     cameraSelect.value = settings.camera || defaultSettings.camera;
     thr.value = String(safeNumber(settings.threshold, defaultSettings.threshold));
+    zoomInput.value = String(safeNumber(settings.zoom, defaultSettings.zoom));
     holdInput.value = String(safeNumber(settings.holdMs, defaultSettings.holdMs));
     coolInput.value = String(safeNumber(settings.coolMs, defaultSettings.coolMs));
     missingInput.value = String(safeNumber(settings.missingMs, defaultSettings.missingMs));
     thrVal.textContent = safeNumber(thr.value, defaultSettings.threshold).toFixed(2);
+    zoomVal.textContent = safeNumber(zoomInput.value, defaultSettings.zoom).toFixed(2) + "x";
     updateVideoMirror();
   }
 
   applySettings(readSettings());
+  updateZoomSupport(false, "チェック開始後にズームを利用できます");
   resetGauges();
   setMainStatus("idle", "🙂 待機中", "チェック開始を押してね");
   syncControls();
@@ -615,6 +638,12 @@ const HTML = `<!doctype html>
   thr.addEventListener("input", () => {
     thrVal.textContent = Number(thr.value).toFixed(2);
     persistSettings();
+  });
+
+  zoomInput.addEventListener("input", () => {
+    zoomVal.textContent = Number(zoomInput.value).toFixed(2) + "x";
+    persistSettings();
+    applyZoom(Number(zoomInput.value));
   });
 
   holdInput.addEventListener("input", persistSettings);
@@ -662,6 +691,71 @@ const HTML = `<!doctype html>
     mainStatusEl.dataset.kind = kind;
     mainStatusTitleEl.textContent = title;
     mainStatusSubEl.textContent = sub;
+  }
+
+  function updateZoomSupport(enabled, message) {
+    zoomInput.disabled = !enabled;
+    zoomHint.textContent = message;
+  }
+
+  function clampZoom(value) {
+    if (!zoomCapabilities?.zoom) return value;
+    const { min, max, step } = zoomCapabilities.zoom;
+    const safeMin = Number.isFinite(min) ? min : 0;
+    const safeMax = Number.isFinite(max) ? max : value;
+    const clamped = Math.min(safeMax, Math.max(safeMin, value));
+    if (!step || step <= 0 || !Number.isFinite(step)) return clamped;
+    const stepped = Math.round((clamped - safeMin) / step) * step + safeMin;
+    return Number(stepped.toFixed(3));
+  }
+
+  function resolveDefaultZoom() {
+    const stored = safeNumber(zoomInput.value, defaultSettings.zoom);
+    if (!zoomCapabilities?.zoom) return stored;
+    const { min } = zoomCapabilities.zoom;
+    return clampZoom(Number.isFinite(stored) ? stored : min ?? defaultSettings.zoom);
+  }
+
+  async function applyZoom(value) {
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track?.applyConstraints) return;
+    if (!zoomCapabilities?.zoom) return;
+    try {
+      const zoomValue = clampZoom(value);
+      await track.applyConstraints({ advanced: [{ zoom: zoomValue }] });
+      zoomInput.value = String(zoomValue);
+      zoomVal.textContent = zoomValue.toFixed(2) + "x";
+    } catch (e) {
+      console.warn("ズーム適用に失敗:", e);
+    }
+  }
+
+  function setupZoomControls() {
+    zoomCapabilities = null;
+    const track = stream?.getVideoTracks?.()[0];
+    if (!track?.getCapabilities) {
+      updateZoomSupport(false, "ズーム非対応の端末です");
+      return;
+    }
+    const capabilities = track.getCapabilities();
+    if (!capabilities?.zoom) {
+      updateZoomSupport(false, "ズーム非対応の端末です");
+      return;
+    }
+    zoomCapabilities = capabilities;
+    const { min, max, step } = capabilities.zoom;
+    zoomInput.min = String(min ?? 1);
+    zoomInput.max = String(max ?? 1);
+    zoomInput.step = String(step ?? 0.1);
+    updateZoomSupport(true, "スライダーでズーム調整できます");
+    const current = track.getSettings?.().zoom;
+    const initial = clampZoom(
+      Number.isFinite(current) ? current : resolveDefaultZoom()
+    );
+    zoomInput.value = String(initial);
+    zoomVal.textContent = initial.toFixed(2) + "x";
+    applyZoom(initial);
   }
 
   function getBlendshapeScore(result, name) {
@@ -761,6 +855,7 @@ const HTML = `<!doctype html>
     });
     video.srcObject = stream;
     await video.play();
+    setupZoomControls();
   }
 
   async function restartStream() {
@@ -870,6 +965,8 @@ const HTML = `<!doctype html>
     stopStreamTracks(stream);
     stream = null;
     video.srcObject = null;
+    zoomCapabilities = null;
+    updateZoomSupport(false, "チェック開始後にズームを利用できます");
 
     if (wakeLock) {
       try {
