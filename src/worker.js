@@ -477,6 +477,15 @@ const HTML = `<!doctype html>
       </label>
 
       <label class="field">
+        <span class="field-label">自動ズーム</span>
+        <select id="autoZoom">
+          <option value="off">OFF</option>
+          <option value="on">ON</option>
+        </select>
+        <span id="autoZoomHint" class="field-note">顔サイズに合わせてズームを調整します</span>
+      </label>
+
+      <label class="field">
         <span class="field-label">継続判定 (ms)</span>
         <input id="hold" type="number" value="5000" min="0" step="100" />
       </label>
@@ -522,6 +531,8 @@ const HTML = `<!doctype html>
   const zoomInput = document.getElementById("zoom");
   const zoomVal = document.getElementById("zoomVal");
   const zoomHint = document.getElementById("zoomHint");
+  const autoZoomSelect = document.getElementById("autoZoom");
+  const autoZoomHint = document.getElementById("autoZoomHint");
   const holdInput = document.getElementById("hold");
   const coolInput = document.getElementById("cool");
   const missingInput = document.getElementById("missing");
@@ -530,11 +541,16 @@ const HTML = `<!doctype html>
   const NO_FACE_ALERT_AUDIO_URL = "/no-face-alert.wav";
   const STORAGE_KEY = "pokanChecker.settings.v1";
   const TARGET_FPS = 10;
+  const AUTO_ZOOM_TARGET = 0.38;
+  const AUTO_ZOOM_DEADZONE = 0.04;
+  const AUTO_ZOOM_MAX_STEP = 0.12;
+  const AUTO_ZOOM_INTERVAL_MS = 220;
 
   const defaultSettings = {
     camera: "user",
     threshold: 0.08,
     zoom: 1,
+    autoZoom: false,
     holdMs: 5000,
     coolMs: 3000,
     missingMs: 3000,
@@ -560,6 +576,9 @@ const HTML = `<!doctype html>
   let faceMissingSince = null;
   let lastAlertAt = 0;
   let lastInferAt = 0;
+  let zoomStatus = { kind: "idle", message: "チェック開始後にズームを利用できます" };
+  let lastAutoZoomAt = 0;
+  let autoZoomBusy = false;
 
   function safeNumber(value, fallback) {
     const n = Number(value);
@@ -584,6 +603,7 @@ const HTML = `<!doctype html>
       camera: cameraSelect.value || defaultSettings.camera,
       threshold: safeNumber(thr.value, defaultSettings.threshold),
       zoom: safeNumber(zoomInput.value, defaultSettings.zoom),
+      autoZoom: autoZoomSelect.value === "on",
       holdMs: safeNumber(holdInput.value, defaultSettings.holdMs),
       coolMs: safeNumber(coolInput.value, defaultSettings.coolMs),
       missingMs: safeNumber(missingInput.value, defaultSettings.missingMs),
@@ -621,6 +641,7 @@ const HTML = `<!doctype html>
     cameraSelect.value = settings.camera || defaultSettings.camera;
     thr.value = String(safeNumber(settings.threshold, defaultSettings.threshold));
     zoomInput.value = String(safeNumber(settings.zoom, defaultSettings.zoom));
+    autoZoomSelect.value = settings.autoZoom ? "on" : "off";
     holdInput.value = String(safeNumber(settings.holdMs, defaultSettings.holdMs));
     coolInput.value = String(safeNumber(settings.coolMs, defaultSettings.coolMs));
     missingInput.value = String(safeNumber(settings.missingMs, defaultSettings.missingMs));
@@ -630,7 +651,7 @@ const HTML = `<!doctype html>
   }
 
   applySettings(readSettings());
-  updateZoomSupport(false, "チェック開始後にズームを利用できます");
+  setZoomAvailability("idle", "チェック開始後にズームを利用できます");
   resetGauges();
   setMainStatus("idle", "🙂 待機中", "チェック開始を押してね");
   syncControls();
@@ -644,6 +665,12 @@ const HTML = `<!doctype html>
     zoomVal.textContent = Number(zoomInput.value).toFixed(2) + "x";
     persistSettings();
     applyZoom(Number(zoomInput.value));
+  });
+
+  autoZoomSelect.addEventListener("change", () => {
+    persistSettings();
+    lastAutoZoomAt = 0;
+    syncZoomUi();
   });
 
   holdInput.addEventListener("input", persistSettings);
@@ -693,9 +720,41 @@ const HTML = `<!doctype html>
     mainStatusSubEl.textContent = sub;
   }
 
-  function updateZoomSupport(enabled, message) {
-    zoomInput.disabled = !enabled;
-    zoomHint.textContent = message;
+  function isAutoZoomEnabled() {
+    return autoZoomSelect.value === "on";
+  }
+
+  function syncZoomUi() {
+    const autoEnabled = isAutoZoomEnabled();
+    if (zoomStatus.kind === "idle") {
+      zoomInput.disabled = true;
+      autoZoomSelect.disabled = true;
+      zoomHint.textContent = zoomStatus.message;
+      autoZoomHint.textContent = "チェック開始後に利用できます";
+      return;
+    }
+    if (zoomStatus.kind !== "ready") {
+      zoomInput.disabled = true;
+      autoZoomSelect.disabled = true;
+      zoomHint.textContent = zoomStatus.message;
+      autoZoomHint.textContent = "ズーム非対応のため利用できません";
+      return;
+    }
+    autoZoomSelect.disabled = false;
+    if (autoEnabled) {
+      zoomInput.disabled = true;
+      zoomHint.textContent = "自動ズーム中です";
+      autoZoomHint.textContent = "顔サイズに合わせて自動調整します";
+    } else {
+      zoomInput.disabled = false;
+      zoomHint.textContent = zoomStatus.message;
+      autoZoomHint.textContent = "手動でズーム調整します";
+    }
+  }
+
+  function setZoomAvailability(kind, message) {
+    zoomStatus = { kind, message };
+    syncZoomUi();
   }
 
   function clampZoom(value) {
@@ -735,12 +794,12 @@ const HTML = `<!doctype html>
     zoomCapabilities = null;
     const track = stream?.getVideoTracks?.()[0];
     if (!track?.getCapabilities) {
-      updateZoomSupport(false, "ズーム非対応の端末です");
+      setZoomAvailability("unsupported", "ズーム非対応の端末です");
       return;
     }
     const capabilities = track.getCapabilities();
     if (!capabilities?.zoom) {
-      updateZoomSupport(false, "ズーム非対応の端末です");
+      setZoomAvailability("unsupported", "ズーム非対応の端末です");
       return;
     }
     zoomCapabilities = capabilities;
@@ -748,7 +807,7 @@ const HTML = `<!doctype html>
     zoomInput.min = String(min ?? 1);
     zoomInput.max = String(max ?? 1);
     zoomInput.step = String(step ?? 0.1);
-    updateZoomSupport(true, "スライダーでズーム調整できます");
+    setZoomAvailability("ready", "スライダーでズーム調整できます");
     const current = track.getSettings?.().zoom;
     const initial = clampZoom(
       Number.isFinite(current) ? current : resolveDefaultZoom()
@@ -756,6 +815,61 @@ const HTML = `<!doctype html>
     zoomInput.value = String(initial);
     zoomVal.textContent = initial.toFixed(2) + "x";
     applyZoom(initial);
+  }
+
+  function getCurrentZoomValue() {
+    const track = stream?.getVideoTracks?.()[0];
+    const current = track?.getSettings?.().zoom;
+    if (Number.isFinite(current)) return current;
+    return safeNumber(zoomInput.value, defaultSettings.zoom);
+  }
+
+  function calcFaceSize(landmarks) {
+    let minX = 1;
+    let maxX = 0;
+    let minY = 1;
+    let maxY = 0;
+    for (const point of landmarks) {
+      if (point.x < minX) minX = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.y > maxY) maxY = point.y;
+    }
+    const width = maxX - minX;
+    const height = maxY - minY;
+    return Math.max(width, height);
+  }
+
+  function updateAutoZoom(result, nowMs) {
+    if (!running) return;
+    if (!isAutoZoomEnabled()) return;
+    if (!zoomCapabilities?.zoom) return;
+    if (autoZoomBusy) return;
+    if (nowMs - lastAutoZoomAt < AUTO_ZOOM_INTERVAL_MS) return;
+    const landmarks = result?.faceLandmarks?.[0];
+    if (!landmarks || landmarks.length === 0) return;
+
+    const faceSize = calcFaceSize(landmarks);
+    if (!Number.isFinite(faceSize) || faceSize <= 0) return;
+    const diff = faceSize - AUTO_ZOOM_TARGET;
+    if (Math.abs(diff) < AUTO_ZOOM_DEADZONE) return;
+
+    const currentZoom = getCurrentZoomValue();
+    if (!Number.isFinite(currentZoom) || currentZoom <= 0) return;
+
+    let desiredZoom = currentZoom * (AUTO_ZOOM_TARGET / faceSize);
+    const ratio = desiredZoom / currentZoom;
+    const limitedRatio = Math.max(
+      1 - AUTO_ZOOM_MAX_STEP,
+      Math.min(1 + AUTO_ZOOM_MAX_STEP, ratio)
+    );
+    desiredZoom = currentZoom * limitedRatio;
+
+    lastAutoZoomAt = nowMs;
+    autoZoomBusy = true;
+    applyZoom(desiredZoom).finally(() => {
+      autoZoomBusy = false;
+    });
   }
 
   function getBlendshapeScore(result, name) {
@@ -939,6 +1053,8 @@ const HTML = `<!doctype html>
       faceMissingSince = null;
       lastAlertAt = 0;
       lastInferAt = 0;
+      lastAutoZoomAt = 0;
+      autoZoomBusy = false;
     } catch (e) {
       running = false;
       throw e;
@@ -966,7 +1082,7 @@ const HTML = `<!doctype html>
     stream = null;
     video.srcObject = null;
     zoomCapabilities = null;
-    updateZoomSupport(false, "チェック開始後にズームを利用できます");
+    setZoomAvailability("idle", "チェック開始後にズームを利用できます");
 
     if (wakeLock) {
       try {
@@ -989,6 +1105,8 @@ const HTML = `<!doctype html>
     noFaceAlertAudioBuffer = null;
     mouthOpenSince = null;
     faceMissingSince = null;
+    lastAutoZoomAt = 0;
+    autoZoomBusy = false;
 
     resetGauges();
     setMainStatus("idle", "🛑 停止中", "チェック開始を押してね");
@@ -1044,6 +1162,7 @@ const HTML = `<!doctype html>
               "ms"
           );
         } else {
+          updateAutoZoom(result, nowMs);
           faceMissingSince = null;
           setGauge(faceGaugeFillEl, faceGaugeCountEl, 0);
 
