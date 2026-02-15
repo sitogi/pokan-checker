@@ -4,6 +4,22 @@ const HTML = `<!doctype html>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>おくちポカンチェッカー</title>
+  <meta name="description" content="ブラウザだけで動く, おくちポカン検知ツールです. カメラ映像を端末内だけで解析します." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="おくちポカンチェッカー" />
+  <meta property="og:title" content="おくちポカンチェッカー" />
+  <meta property="og:description" content="ブラウザだけで動く, おくちポカン検知ツールです. カメラ映像を端末内だけで解析します." />
+  <meta property="og:url" content="https://pokan-checker.sitogi.dev/" />
+  <meta property="og:image" content="https://pokan-checker.sitogi.dev/og-image.png" />
+  <meta property="og:image:width" content="1024" />
+  <meta property="og:image:height" content="1024" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="おくちポカンチェッカー" />
+  <meta name="twitter:description" content="ブラウザだけで動く, おくちポカン検知ツールです. カメラ映像を端末内だけで解析します." />
+  <meta name="twitter:image" content="https://pokan-checker.sitogi.dev/og-image.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="shortcut icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <style>
     :root {
       color-scheme: light;
@@ -1274,6 +1290,16 @@ function buildHeaders() {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/favicon.ico" && env && env.ASSETS) {
+      const iconUrl = new URL(request.url);
+      iconUrl.pathname = "/favicon.png";
+      const iconRequest = new Request(iconUrl.toString(), {
+        method: "GET",
+        headers: request.headers,
+      });
+      return env.ASSETS.fetch(iconRequest);
+    }
 
     if (url.pathname === "/healthz") {
       return new Response("ok", {

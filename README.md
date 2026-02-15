@@ -37,6 +37,13 @@ npx wrangler login
 npx wrangler deploy
 ```
 
+### カスタムドメイン `pokan-checker.sitogi.dev`
+
+- `wrangler.toml` で `pokan-checker.sitogi.dev` を `custom_domain` として設定済みです.
+- `npx wrangler deploy` 実行時に, Cloudflare 側で `sitogi.dev` ゾーン内の Worker ルートと証明書設定が作成されます.
+- すでに `pokan-checker.sitogi.dev` に `A` / `AAAA` / `CNAME` レコードがある場合は, 先に削除してください.
+- 反映後は `https://pokan-checker.sitogi.dev` でアクセスできます.
+
 ## メモ
 
 - 初回はモデル読み込みに時間がかかります.
