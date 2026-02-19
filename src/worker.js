@@ -472,31 +472,34 @@ const HTML = `<!doctype html>
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 12px;
       width: 100%;
     }
 
     .stepper-btn {
-      width: 46px;
-      height: 46px;
-      border: 2px solid #d0d9ff;
-      border-radius: 14px;
-      background: #ffffff;
-      color: #2e3d6b;
-      font-size: 26px;
+      min-width: 62px;
+      height: 52px;
+      padding: 0 16px;
+      border: 2px solid #c6d2ff;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff, #eef3ff);
+      color: #2a3a66;
+      font-size: 32px;
       font-weight: 800;
       line-height: 1;
       cursor: pointer;
       touch-action: manipulation;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 4px 10px rgba(86, 112, 201, 0.16);
     }
 
     .stepper-btn:active {
-      transform: translateY(1px);
+      transform: translateY(1px) scale(0.99);
     }
 
     .stepper-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+      box-shadow: none;
     }
 
     .choice-group {
@@ -565,15 +568,21 @@ const HTML = `<!doctype html>
     }
 
     .value {
-      min-width: 78px;
+      min-width: 110px;
+      height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
       font-weight: 800;
-      color: #24324a;
-      background: #ffffff;
-      border: 2px solid #dfe6ff;
-      border-radius: 12px;
-      padding: 8px 10px;
-      font-size: 16px;
+      color: #2c3966;
+      background: linear-gradient(135deg, #f2f6ff, #f9efff);
+      border: 2px solid #d5ddfb;
+      border-radius: 16px;
+      padding: 0 14px;
+      font-size: 17px;
+      letter-spacing: 0.01em;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 4px 10px rgba(86, 112, 201, 0.12);
     }
 
     .debug-text {
