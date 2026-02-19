@@ -327,24 +327,145 @@ const HTML = `<!doctype html>
 
     .field {
       display: grid;
-      gap: 6px;
-      background: #f8f9ff;
-      border: 2px solid #e2e7ff;
-      border-radius: 16px;
-      padding: 10px;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, #ffffff, #f7f9ff);
+      border: 2px solid #d7def8;
+      border-radius: 20px;
+      padding: 12px;
+      box-shadow: 0 8px 16px rgba(96, 118, 198, 0.12);
+    }
+
+    .field::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(122, 142, 255, 0.6), rgba(255, 165, 211, 0.65));
+      pointer-events: none;
+    }
+
+    .field-head {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .field-head-toggle {
+      grid-template-columns: 44px 1fr auto;
+    }
+
+    .field-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      background: linear-gradient(135deg, #7dd8ff, #6ba4ff);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 10px rgba(84, 112, 219, 0.25);
+    }
+
+    .field-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
     }
 
     .field-label {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 800;
       color: #31406b;
       letter-spacing: 0.01em;
+    }
+
+    .field-sub {
+      font-size: 12px;
+      color: #5a6c99;
+      font-weight: 700;
     }
 
     .field-row {
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .zoom-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 2px 2px 2px 6px;
+      border-radius: 999px;
+      border: 2px solid #d5ddfa;
+      background: #ffffff;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .zoom-toggle input[type="checkbox"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      border: 0;
+      padding: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .zoom-toggle-ui {
+      width: 46px;
+      height: 28px;
+      border-radius: 999px;
+      position: relative;
+      background: #d8def4;
+      transition: background 140ms ease;
+    }
+
+    .zoom-toggle-thumb {
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(56, 75, 140, 0.25);
+      transition: transform 140ms ease;
+    }
+
+    .zoom-toggle-text {
+      min-width: 2.6em;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #3a4a76;
+      letter-spacing: 0.02em;
+    }
+
+    .zoom-toggle:has(input[type="checkbox"]:checked) {
+      border-color: #91a7ff;
+      background: #eef2ff;
+    }
+
+    .zoom-toggle:has(input[type="checkbox"]:checked) .zoom-toggle-ui {
+      background: linear-gradient(135deg, #7ca8ff, #5f8dff);
+    }
+
+    .zoom-toggle:has(input[type="checkbox"]:checked) .zoom-toggle-thumb {
+      transform: translateX(18px);
+    }
+
+    .zoom-toggle.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     .stepper {
@@ -382,6 +503,16 @@ const HTML = `<!doctype html>
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+
+    .field[data-kind="mouth"] .field-icon {
+      background: linear-gradient(135deg, #ffb4cf, #ff7aa8);
+    }
+
+    .field[data-kind="watch"] .field-icon,
+    .field[data-kind="cooldown"] .field-icon,
+    .field[data-kind="missing"] .field-icon {
+      background: linear-gradient(135deg, #8ee7d9, #55c7f3);
     }
 
     .choice {
@@ -461,6 +592,7 @@ const HTML = `<!doctype html>
     @media (min-width: 720px) {
       .settings-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 12px;
       }
     }
   </style>
@@ -514,8 +646,14 @@ const HTML = `<!doctype html>
   <section class="panel">
     <div class="panel-title">設定</div>
     <div class="settings-grid">
-      <div class="field">
-        <span class="field-label">カメラ</span>
+      <div class="field" data-kind="camera">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true">カ</span>
+          <div class="field-title">
+            <span class="field-label">カメラ</span>
+            <span class="field-sub">使うカメラをえらぼう</span>
+          </div>
+        </div>
         <div class="choice-group">
           <label class="choice">
             <input type="radio" name="cameraMode" value="user" />
@@ -528,33 +666,35 @@ const HTML = `<!doctype html>
         </div>
       </div>
 
-      <div class="field">
-        <span class="field-label">自動ズーム</span>
-        <div class="choice-group">
-          <label class="choice">
-            <input type="radio" name="autoZoom" value="off" />
-            <span>OFF</span>
-          </label>
-          <label class="choice">
-            <input type="radio" name="autoZoom" value="on" />
-            <span>ON</span>
+      <div class="field" data-kind="zoom">
+        <div class="field-head field-head-toggle">
+          <span class="field-icon" aria-hidden="true">拡</span>
+          <div class="field-title">
+            <span class="field-label">ズーム</span>
+          </div>
+          <label id="autoZoomToggleWrap" class="zoom-toggle" aria-label="自動ズーム切替">
+            <input id="autoZoomToggle" type="checkbox" />
+            <span class="zoom-toggle-ui" aria-hidden="true">
+              <span class="zoom-toggle-thumb"></span>
+            </span>
+            <span id="autoZoomModeText" class="zoom-toggle-text">手動</span>
           </label>
         </div>
-        <span id="autoZoomHint" class="field-note"></span>
-      </div>
-
-      <div class="field">
-        <span class="field-label">ズーム</span>
         <div class="stepper">
           <button id="zoomDown" class="stepper-btn" type="button" aria-label="ズームを下げる">-</button>
           <span id="zoomVal" class="value">1.00x</span>
           <button id="zoomUp" class="stepper-btn" type="button" aria-label="ズームを上げる">+</button>
         </div>
-        <span id="zoomHint" class="field-note"></span>
       </div>
 
-      <div class="field">
-        <span class="field-label">口開き閾値 (小さいほどシビア)</span>
+      <div class="field" data-kind="mouth">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true">口</span>
+          <div class="field-title">
+            <span class="field-label">口開き閾値 (小さいほどシビア)</span>
+            <span class="field-sub">1 から 10 でえらべるよ</span>
+          </div>
+        </div>
         <div class="stepper">
           <button id="thrDown" class="stepper-btn" type="button" aria-label="口開き閾値を下げる">-</button>
           <span id="thrVal" class="value">5</span>
@@ -563,8 +703,14 @@ const HTML = `<!doctype html>
         <span class="field-note"></span>
       </div>
 
-      <div class="field">
-        <span class="field-label">継続判定</span>
+      <div class="field" data-kind="watch">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true">続</span>
+          <div class="field-title">
+            <span class="field-label">継続判定</span>
+            <span class="field-sub">何秒つづいたら通知するか</span>
+          </div>
+        </div>
         <div class="stepper">
           <button id="holdDown" class="stepper-btn" type="button" aria-label="継続判定を減らす">-</button>
           <span id="holdVal" class="value">5 秒</span>
@@ -573,8 +719,14 @@ const HTML = `<!doctype html>
         <span class="field-note"></span>
       </div>
 
-      <div class="field">
-        <span class="field-label">クールダウン</span>
+      <div class="field" data-kind="cooldown">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true">待</span>
+          <div class="field-title">
+            <span class="field-label">クールダウン</span>
+            <span class="field-sub">通知の間隔を決める</span>
+          </div>
+        </div>
         <div class="stepper">
           <button id="coolDown" class="stepper-btn" type="button" aria-label="クールダウンを減らす">-</button>
           <span id="coolVal" class="value">3 秒</span>
@@ -583,8 +735,14 @@ const HTML = `<!doctype html>
         <span class="field-note"></span>
       </div>
 
-      <div class="field">
-        <span class="field-label">顔未検出アラート</span>
+      <div class="field" data-kind="missing">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true">顔</span>
+          <div class="field-title">
+            <span class="field-label">顔未検出アラート</span>
+            <span class="field-sub">顔が見えない時間で通知</span>
+          </div>
+        </div>
         <div class="stepper">
           <button id="missingDown" class="stepper-btn" type="button" aria-label="顔未検出アラートを減らす">-</button>
           <span id="missingVal" class="value">3 秒</span>
@@ -625,8 +783,6 @@ const HTML = `<!doctype html>
   const zoomVal = document.getElementById("zoomVal");
   const zoomDownBtn = document.getElementById("zoomDown");
   const zoomUpBtn = document.getElementById("zoomUp");
-  const zoomHint = document.getElementById("zoomHint");
-  const autoZoomHint = document.getElementById("autoZoomHint");
   const holdVal = document.getElementById("holdVal");
   const holdDownBtn = document.getElementById("holdDown");
   const holdUpBtn = document.getElementById("holdUp");
@@ -636,8 +792,10 @@ const HTML = `<!doctype html>
   const missingVal = document.getElementById("missingVal");
   const missingDownBtn = document.getElementById("missingDown");
   const missingUpBtn = document.getElementById("missingUp");
+  const autoZoomToggle = document.getElementById("autoZoomToggle");
+  const autoZoomToggleWrap = document.getElementById("autoZoomToggleWrap");
+  const autoZoomModeText = document.getElementById("autoZoomModeText");
   const cameraModeInputs = Array.from(document.querySelectorAll('input[name="cameraMode"]'));
-  const autoZoomInputs = Array.from(document.querySelectorAll('input[name="autoZoom"]'));
   const MOUTH_ALERT_AUDIO_URL = "/zundamon-alert.wav";
   const NO_FACE_ALERT_AUDIO_URL = "/no-face-alert.wav";
   const STORAGE_KEY = "pokanChecker.settings.v1";
@@ -726,6 +884,15 @@ const HTML = `<!doctype html>
     });
   }
 
+  function setAutoZoomToggleDisabled(disabled) {
+    autoZoomToggle.disabled = disabled;
+    autoZoomToggleWrap.classList.toggle("is-disabled", disabled);
+  }
+
+  function renderAutoZoomMode() {
+    autoZoomModeText.textContent = autoZoomToggle.checked ? "自動" : "手動";
+  }
+
   function resolveThresholdScale(value) {
     const n = safeNumber(value, defaultSettings.threshold);
     const scale = Math.round(n);
@@ -796,7 +963,7 @@ const HTML = `<!doctype html>
       camera: getCameraMode(),
       threshold: settingsState.threshold,
       zoom: settingsState.zoom,
-      autoZoom: getRadioValue(autoZoomInputs, "off") === "on",
+      autoZoom: autoZoomToggle.checked,
       holdMs: settingsState.holdMs,
       coolMs: settingsState.coolMs,
       missingMs: settingsState.missingMs,
@@ -832,7 +999,8 @@ const HTML = `<!doctype html>
 
   function applySettings(settings) {
     setRadioValue(cameraModeInputs, settings.camera, defaultSettings.camera);
-    setRadioValue(autoZoomInputs, settings.autoZoom ? "on" : "off", "off");
+    autoZoomToggle.checked = !!settings.autoZoom;
+    renderAutoZoomMode();
     settingsState.threshold = clampThresholdScale(resolveThresholdScale(settings.threshold));
     settingsState.zoom = safeNumber(settings.zoom, defaultSettings.zoom);
     settingsState.holdMs = normalizeDurationMs(settings.holdMs, defaultSettings.holdMs);
@@ -905,7 +1073,7 @@ const HTML = `<!doctype html>
   }
 
   applySettings(readSettings());
-  setZoomAvailability("idle", "チェック開始後にズームを利用できます");
+  setZoomAvailability("idle");
   resetGauges();
   setMainStatus("idle", "🙂 待機中", "チェック開始を押してね");
   syncControls();
@@ -945,12 +1113,11 @@ const HTML = `<!doctype html>
     adjustDuration("missingMs", 1);
   });
 
-  autoZoomInputs.forEach((input) => {
-    input.addEventListener("change", () => {
-      persistSettings();
-      lastAutoZoomAt = 0;
-      syncZoomUi();
-    });
+  autoZoomToggle.addEventListener("change", () => {
+    renderAutoZoomMode();
+    persistSettings();
+    lastAutoZoomAt = 0;
+    syncZoomUi();
   });
 
   cameraModeInputs.forEach((input) => {
@@ -1000,33 +1167,21 @@ const HTML = `<!doctype html>
   }
 
   function isAutoZoomEnabled() {
-    return getRadioValue(autoZoomInputs, "off") === "on";
+    return autoZoomToggle.checked;
   }
 
   function syncZoomUi() {
-    const autoEnabled = isAutoZoomEnabled();
     if (zoomStatus.kind === "idle") {
-      setRadioDisabled(autoZoomInputs, true);
-      zoomHint.textContent = "";
-      autoZoomHint.textContent = "";
+      setAutoZoomToggleDisabled(true);
       syncStepperButtons();
       return;
     }
     if (zoomStatus.kind !== "ready") {
-      setRadioDisabled(autoZoomInputs, true);
-      zoomHint.textContent = "";
-      autoZoomHint.textContent = "";
+      setAutoZoomToggleDisabled(true);
       syncStepperButtons();
       return;
     }
-    setRadioDisabled(autoZoomInputs, false);
-    if (autoEnabled) {
-      zoomHint.textContent = "";
-      autoZoomHint.textContent = "";
-    } else {
-      zoomHint.textContent = "";
-      autoZoomHint.textContent = "";
-    }
+    setAutoZoomToggleDisabled(false);
     syncStepperButtons();
   }
 
@@ -1085,17 +1240,17 @@ const HTML = `<!doctype html>
     zoomUiStep = 0.1;
     const track = stream?.getVideoTracks?.()[0];
     if (!track?.getCapabilities) {
-      setZoomAvailability("unsupported", "ズーム非対応の端末です");
+      setZoomAvailability("unsupported");
       return;
     }
     const capabilities = track.getCapabilities();
     if (!capabilities?.zoom) {
-      setZoomAvailability("unsupported", "ズーム非対応の端末です");
+      setZoomAvailability("unsupported");
       return;
     }
     zoomCapabilities = capabilities;
     zoomUiStep = resolveZoomUiStep();
-    setZoomAvailability("ready", "ボタンでズーム調整できます");
+    setZoomAvailability("ready");
     const current = track.getSettings?.().zoom;
     const initial = clampZoom(
       Number.isFinite(current) ? current : resolveDefaultZoom()
@@ -1371,7 +1526,7 @@ const HTML = `<!doctype html>
     stream = null;
     video.srcObject = null;
     zoomCapabilities = null;
-    setZoomAvailability("idle", "チェック開始後にズームを利用できます");
+    setZoomAvailability("idle");
 
     if (wakeLock) {
       try {
