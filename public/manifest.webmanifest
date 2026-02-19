@@ -1,0 +1,25 @@
+{
+  "name": "おくちポカンチェッカー",
+  "short_name": "ポカンチェッカー",
+  "description": "ブラウザだけで動く, おくちポカン検知ツールです.",
+  "lang": "ja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff4c7",
+  "theme_color": "#ff89ad",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
