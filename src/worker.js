@@ -347,55 +347,90 @@ const HTML = `<!doctype html>
       gap: 8px;
     }
 
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stepper-btn {
+      width: 46px;
+      height: 46px;
+      border: 2px solid #d0d9ff;
+      border-radius: 14px;
+      background: #ffffff;
+      color: #2e3d6b;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .stepper-btn:active {
+      transform: translateY(1px);
+    }
+
+    .stepper-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .choice-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .choice {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 8px 10px;
+      border: 2px solid #dfe6ff;
+      border-radius: 14px;
+      background: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .choice input[type="radio"] {
+      width: 19px;
+      height: 19px;
+      margin: 0;
+      accent-color: #4d7cff;
+    }
+
+    .choice.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .choice:has(input[type="radio"]:checked) {
+      border-color: #4d7cff;
+      background: #edf2ff;
+    }
+
     .field-note {
       font-size: 12px;
       color: var(--muted);
     }
 
-    .field-row .value {
-      min-width: 52px;
-      text-align: right;
+    .value {
+      min-width: 78px;
+      text-align: center;
       font-weight: 800;
       color: #24324a;
       background: #ffffff;
       border: 2px solid #dfe6ff;
       border-radius: 12px;
-      padding: 4px 8px;
-      font-size: 13px;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      height: 12px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #ffd2a8, #ffb0c6);
-      outline: none;
-      border: 2px solid #fff;
-      box-shadow: inset 0 2px 6px rgba(64, 37, 72, 0.18);
-      appearance: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      appearance: none;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 3px solid #ff7a9c;
-      box-shadow: 0 6px 14px rgba(255, 122, 156, 0.35);
-      cursor: pointer;
-    }
-
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 10px 12px;
+      padding: 8px 10px;
       font-size: 16px;
-      border-radius: 14px;
-      border: 2px solid #dfe6ff;
-      background: #ffffff;
-      color: var(--ink);
-      font-weight: 700;
     }
 
     .debug-text {
@@ -469,51 +504,81 @@ const HTML = `<!doctype html>
     <div class="settings-grid">
       <label class="field">
         <span class="field-label">カメラ</span>
-        <select id="camera">
-          <option value="user">フロント</option>
-          <option value="environment">リア</option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span class="field-label">口開き閾値 (jawOpen)</span>
-        <div class="field-row">
-          <input id="thr" type="range" min="0" max="1" step="0.01" value="0.08" />
-          <span id="thrVal" class="value">0.08</span>
+        <div class="choice-group">
+          <label class="choice">
+            <input type="radio" name="cameraMode" value="user" />
+            <span>フロント</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="cameraMode" value="environment" />
+            <span>リア</span>
+          </label>
         </div>
       </label>
 
       <label class="field">
+        <span class="field-label">口開き閾値 (jawOpen)</span>
+        <div class="stepper">
+          <button id="thrDown" class="stepper-btn" type="button" aria-label="口開き閾値を下げる">-</button>
+          <span id="thrVal" class="value">0.08</span>
+          <button id="thrUp" class="stepper-btn" type="button" aria-label="口開き閾値を上げる">+</button>
+        </div>
+        <span class="field-note">0.05 から 0.15 まで 0.01 刻みで調整します</span>
+      </label>
+
+      <label class="field">
         <span class="field-label">ズーム</span>
-        <div class="field-row">
-          <input id="zoom" type="range" min="1" max="1" step="0.1" value="1" />
+        <div class="stepper">
+          <button id="zoomDown" class="stepper-btn" type="button" aria-label="ズームを下げる">-</button>
           <span id="zoomVal" class="value">1.00x</span>
+          <button id="zoomUp" class="stepper-btn" type="button" aria-label="ズームを上げる">+</button>
         </div>
         <span id="zoomHint" class="field-note">対応端末のみ利用できます</span>
       </label>
 
       <label class="field">
         <span class="field-label">自動ズーム</span>
-        <select id="autoZoom">
-          <option value="off">OFF</option>
-          <option value="on">ON</option>
-        </select>
+        <div class="choice-group">
+          <label class="choice">
+            <input type="radio" name="autoZoom" value="off" />
+            <span>OFF</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="autoZoom" value="on" />
+            <span>ON</span>
+          </label>
+        </div>
         <span id="autoZoomHint" class="field-note">顔サイズに合わせてズームを調整します</span>
       </label>
 
       <label class="field">
-        <span class="field-label">継続判定 (ms)</span>
-        <input id="hold" type="number" value="5000" min="0" step="100" />
+        <span class="field-label">継続判定</span>
+        <div class="stepper">
+          <button id="holdDown" class="stepper-btn" type="button" aria-label="継続判定を減らす">-</button>
+          <span id="holdVal" class="value">5 秒</span>
+          <button id="holdUp" class="stepper-btn" type="button" aria-label="継続判定を増やす">+</button>
+        </div>
+        <span class="field-note">1 秒単位で調整します</span>
       </label>
 
       <label class="field">
-        <span class="field-label">クールダウン (ms)</span>
-        <input id="cool" type="number" value="3000" min="0" step="500" />
+        <span class="field-label">クールダウン</span>
+        <div class="stepper">
+          <button id="coolDown" class="stepper-btn" type="button" aria-label="クールダウンを減らす">-</button>
+          <span id="coolVal" class="value">3 秒</span>
+          <button id="coolUp" class="stepper-btn" type="button" aria-label="クールダウンを増やす">+</button>
+        </div>
+        <span class="field-note">1 秒単位で調整します</span>
       </label>
 
       <label class="field">
-        <span class="field-label">顔未検出アラート (ms)</span>
-        <input id="missing" type="number" value="3000" min="0" step="500" />
+        <span class="field-label">顔未検出アラート</span>
+        <div class="stepper">
+          <button id="missingDown" class="stepper-btn" type="button" aria-label="顔未検出アラートを減らす">-</button>
+          <span id="missingVal" class="value">3 秒</span>
+          <button id="missingUp" class="stepper-btn" type="button" aria-label="顔未検出アラートを増やす">+</button>
+        </div>
+        <span class="field-note">1 秒単位で調整します</span>
       </label>
     </div>
   </section>
@@ -542,17 +607,25 @@ const HTML = `<!doctype html>
   const faceGaugeFillEl = document.getElementById("faceGaugeFill");
   const faceGaugeCountEl = document.getElementById("faceGaugeCount");
 
-  const thr = document.getElementById("thr");
   const thrVal = document.getElementById("thrVal");
-  const zoomInput = document.getElementById("zoom");
+  const thrDownBtn = document.getElementById("thrDown");
+  const thrUpBtn = document.getElementById("thrUp");
   const zoomVal = document.getElementById("zoomVal");
+  const zoomDownBtn = document.getElementById("zoomDown");
+  const zoomUpBtn = document.getElementById("zoomUp");
   const zoomHint = document.getElementById("zoomHint");
-  const autoZoomSelect = document.getElementById("autoZoom");
   const autoZoomHint = document.getElementById("autoZoomHint");
-  const holdInput = document.getElementById("hold");
-  const coolInput = document.getElementById("cool");
-  const missingInput = document.getElementById("missing");
-  const cameraSelect = document.getElementById("camera");
+  const holdVal = document.getElementById("holdVal");
+  const holdDownBtn = document.getElementById("holdDown");
+  const holdUpBtn = document.getElementById("holdUp");
+  const coolVal = document.getElementById("coolVal");
+  const coolDownBtn = document.getElementById("coolDown");
+  const coolUpBtn = document.getElementById("coolUp");
+  const missingVal = document.getElementById("missingVal");
+  const missingDownBtn = document.getElementById("missingDown");
+  const missingUpBtn = document.getElementById("missingUp");
+  const cameraModeInputs = Array.from(document.querySelectorAll('input[name="cameraMode"]'));
+  const autoZoomInputs = Array.from(document.querySelectorAll('input[name="autoZoom"]'));
   const MOUTH_ALERT_AUDIO_URL = "/zundamon-alert.wav";
   const NO_FACE_ALERT_AUDIO_URL = "/no-face-alert.wav";
   const STORAGE_KEY = "pokanChecker.settings.v1";
@@ -561,6 +634,12 @@ const HTML = `<!doctype html>
   const AUTO_ZOOM_DEADZONE = 0.04;
   const AUTO_ZOOM_MAX_STEP = 0.12;
   const AUTO_ZOOM_INTERVAL_MS = 220;
+  const THRESHOLD_MIN = 0.05;
+  const THRESHOLD_MAX = 0.15;
+  const THRESHOLD_STEP = 0.01;
+  const DURATION_STEP_MS = 1000;
+  const ZOOM_STEP_SEGMENTS = 10;
+  const EPSILON = 1e-6;
 
   const defaultSettings = {
     camera: "user",
@@ -570,6 +649,14 @@ const HTML = `<!doctype html>
     holdMs: 5000,
     coolMs: 3000,
     missingMs: 3000,
+  };
+
+  const settingsState = {
+    threshold: defaultSettings.threshold,
+    zoom: defaultSettings.zoom,
+    holdMs: defaultSettings.holdMs,
+    coolMs: defaultSettings.coolMs,
+    missingMs: defaultSettings.missingMs,
   };
 
   let stream = null;
@@ -595,10 +682,70 @@ const HTML = `<!doctype html>
   let zoomStatus = { kind: "idle", message: "チェック開始後にズームを利用できます" };
   let lastAutoZoomAt = 0;
   let autoZoomBusy = false;
+  let zoomUiStep = 0.1;
 
   function safeNumber(value, fallback) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
+  }
+
+  function getRadioValue(inputs, fallback) {
+    const checked = inputs.find((input) => input.checked);
+    return checked ? checked.value : fallback;
+  }
+
+  function setRadioValue(inputs, value, fallback) {
+    const allowed = inputs.map((input) => input.value);
+    const next = allowed.includes(value) ? value : fallback;
+    inputs.forEach((input) => {
+      input.checked = input.value === next;
+    });
+    return next;
+  }
+
+  function setRadioDisabled(inputs, disabled) {
+    inputs.forEach((input) => {
+      input.disabled = disabled;
+      const option = input.closest(".choice");
+      if (option) {
+        option.classList.toggle("is-disabled", disabled);
+      }
+    });
+  }
+
+  function clampThreshold(value) {
+    const n = safeNumber(value, defaultSettings.threshold);
+    const clamped = Math.min(THRESHOLD_MAX, Math.max(THRESHOLD_MIN, n));
+    const stepped =
+      Math.round((clamped - THRESHOLD_MIN) / THRESHOLD_STEP) * THRESHOLD_STEP + THRESHOLD_MIN;
+    return Number(stepped.toFixed(2));
+  }
+
+  function normalizeDurationMs(value, fallbackMs) {
+    const safeMs = Math.max(0, safeNumber(value, fallbackMs));
+    return Math.round(safeMs / DURATION_STEP_MS) * DURATION_STEP_MS;
+  }
+
+  function formatSeconds(ms) {
+    return Math.round(ms / 1000) + " 秒";
+  }
+
+  function renderThreshold() {
+    thrVal.textContent = settingsState.threshold.toFixed(2);
+  }
+
+  function renderZoom() {
+    zoomVal.textContent = settingsState.zoom.toFixed(2) + "x";
+  }
+
+  function renderDurations() {
+    holdVal.textContent = formatSeconds(settingsState.holdMs);
+    coolVal.textContent = formatSeconds(settingsState.coolMs);
+    missingVal.textContent = formatSeconds(settingsState.missingMs);
+  }
+
+  function getCameraMode() {
+    return getRadioValue(cameraModeInputs, defaultSettings.camera);
   }
 
   function readSettings() {
@@ -616,13 +763,13 @@ const HTML = `<!doctype html>
 
   function collectSettings() {
     return {
-      camera: cameraSelect.value || defaultSettings.camera,
-      threshold: safeNumber(thr.value, defaultSettings.threshold),
-      zoom: safeNumber(zoomInput.value, defaultSettings.zoom),
-      autoZoom: autoZoomSelect.value === "on",
-      holdMs: safeNumber(holdInput.value, defaultSettings.holdMs),
-      coolMs: safeNumber(coolInput.value, defaultSettings.coolMs),
-      missingMs: safeNumber(missingInput.value, defaultSettings.missingMs),
+      camera: getCameraMode(),
+      threshold: settingsState.threshold,
+      zoom: settingsState.zoom,
+      autoZoom: getRadioValue(autoZoomInputs, "off") === "on",
+      holdMs: settingsState.holdMs,
+      coolMs: settingsState.coolMs,
+      missingMs: settingsState.missingMs,
     };
   }
 
@@ -635,7 +782,7 @@ const HTML = `<!doctype html>
   }
 
   function updateVideoMirror() {
-    const mode = cameraSelect.value || defaultSettings.camera;
+    const mode = getCameraMode();
     video.style.transform = mode === "user" ? "scaleX(-1)" : "none";
   }
 
@@ -654,16 +801,77 @@ const HTML = `<!doctype html>
   }
 
   function applySettings(settings) {
-    cameraSelect.value = settings.camera || defaultSettings.camera;
-    thr.value = String(safeNumber(settings.threshold, defaultSettings.threshold));
-    zoomInput.value = String(safeNumber(settings.zoom, defaultSettings.zoom));
-    autoZoomSelect.value = settings.autoZoom ? "on" : "off";
-    holdInput.value = String(safeNumber(settings.holdMs, defaultSettings.holdMs));
-    coolInput.value = String(safeNumber(settings.coolMs, defaultSettings.coolMs));
-    missingInput.value = String(safeNumber(settings.missingMs, defaultSettings.missingMs));
-    thrVal.textContent = safeNumber(thr.value, defaultSettings.threshold).toFixed(2);
-    zoomVal.textContent = safeNumber(zoomInput.value, defaultSettings.zoom).toFixed(2) + "x";
+    setRadioValue(cameraModeInputs, settings.camera, defaultSettings.camera);
+    setRadioValue(autoZoomInputs, settings.autoZoom ? "on" : "off", "off");
+    settingsState.threshold = clampThreshold(settings.threshold);
+    settingsState.zoom = safeNumber(settings.zoom, defaultSettings.zoom);
+    settingsState.holdMs = normalizeDurationMs(settings.holdMs, defaultSettings.holdMs);
+    settingsState.coolMs = normalizeDurationMs(settings.coolMs, defaultSettings.coolMs);
+    settingsState.missingMs = normalizeDurationMs(settings.missingMs, defaultSettings.missingMs);
+    renderThreshold();
+    renderZoom();
+    renderDurations();
     updateVideoMirror();
+    syncStepperButtons();
+  }
+
+  function adjustThreshold(direction) {
+    const next = clampThreshold(settingsState.threshold + direction * THRESHOLD_STEP);
+    if (next === settingsState.threshold) {
+      syncStepperButtons();
+      return;
+    }
+    settingsState.threshold = next;
+    renderThreshold();
+    syncStepperButtons();
+    persistSettings();
+  }
+
+  function adjustDuration(key, direction) {
+    const current = safeNumber(settingsState[key], 0);
+    const next = Math.max(0, current + direction * DURATION_STEP_MS);
+    if (next === current) {
+      syncStepperButtons();
+      return;
+    }
+    settingsState[key] = next;
+    renderDurations();
+    syncStepperButtons();
+    persistSettings();
+  }
+
+  function syncStepperButtons() {
+    thrDownBtn.disabled = settingsState.threshold <= THRESHOLD_MIN + EPSILON;
+    thrUpBtn.disabled = settingsState.threshold >= THRESHOLD_MAX - EPSILON;
+    holdDownBtn.disabled = settingsState.holdMs <= 0;
+    coolDownBtn.disabled = settingsState.coolMs <= 0;
+    missingDownBtn.disabled = settingsState.missingMs <= 0;
+
+    const canAdjustZoom = zoomStatus.kind === "ready" && !isAutoZoomEnabled() && !!zoomCapabilities?.zoom;
+    if (!canAdjustZoom) {
+      zoomDownBtn.disabled = true;
+      zoomUpBtn.disabled = true;
+      return;
+    }
+    const minZoom = safeNumber(zoomCapabilities.zoom.min, settingsState.zoom);
+    const maxZoom = safeNumber(zoomCapabilities.zoom.max, settingsState.zoom);
+    zoomDownBtn.disabled = settingsState.zoom <= minZoom + EPSILON;
+    zoomUpBtn.disabled = settingsState.zoom >= maxZoom - EPSILON;
+  }
+
+  async function adjustZoom(direction) {
+    if (zoomStatus.kind !== "ready") return;
+    if (isAutoZoomEnabled()) return;
+    const next = clampZoom(settingsState.zoom + direction * zoomUiStep);
+    if (!Number.isFinite(next) || Math.abs(next - settingsState.zoom) < EPSILON) {
+      syncStepperButtons();
+      return;
+    }
+    settingsState.zoom = next;
+    renderZoom();
+    syncStepperButtons();
+    persistSettings();
+    await applyZoom(next);
   }
 
   applySettings(readSettings());
@@ -672,32 +880,57 @@ const HTML = `<!doctype html>
   setMainStatus("idle", "🙂 待機中", "チェック開始を押してね");
   syncControls();
 
-  thr.addEventListener("input", () => {
-    thrVal.textContent = Number(thr.value).toFixed(2);
-    persistSettings();
+  thrDownBtn.addEventListener("click", () => {
+    adjustThreshold(-1);
   });
 
-  zoomInput.addEventListener("input", () => {
-    zoomVal.textContent = Number(zoomInput.value).toFixed(2) + "x";
-    persistSettings();
-    applyZoom(Number(zoomInput.value));
+  thrUpBtn.addEventListener("click", () => {
+    adjustThreshold(1);
   });
 
-  autoZoomSelect.addEventListener("change", () => {
-    persistSettings();
-    lastAutoZoomAt = 0;
-    syncZoomUi();
+  zoomDownBtn.addEventListener("click", () => {
+    adjustZoom(-1);
   });
 
-  holdInput.addEventListener("input", persistSettings);
-  coolInput.addEventListener("input", persistSettings);
-  missingInput.addEventListener("input", persistSettings);
-  cameraSelect.addEventListener("change", () => {
-    updateVideoMirror();
-    persistSettings();
-    if (running) {
-      restartStream();
-    }
+  zoomUpBtn.addEventListener("click", () => {
+    adjustZoom(1);
+  });
+
+  holdDownBtn.addEventListener("click", () => {
+    adjustDuration("holdMs", -1);
+  });
+  holdUpBtn.addEventListener("click", () => {
+    adjustDuration("holdMs", 1);
+  });
+  coolDownBtn.addEventListener("click", () => {
+    adjustDuration("coolMs", -1);
+  });
+  coolUpBtn.addEventListener("click", () => {
+    adjustDuration("coolMs", 1);
+  });
+  missingDownBtn.addEventListener("click", () => {
+    adjustDuration("missingMs", -1);
+  });
+  missingUpBtn.addEventListener("click", () => {
+    adjustDuration("missingMs", 1);
+  });
+
+  autoZoomInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      persistSettings();
+      lastAutoZoomAt = 0;
+      syncZoomUi();
+    });
+  });
+
+  cameraModeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      updateVideoMirror();
+      persistSettings();
+      if (running) {
+        restartStream();
+      }
+    });
   });
 
   function setStatus(msg) {
@@ -737,35 +970,34 @@ const HTML = `<!doctype html>
   }
 
   function isAutoZoomEnabled() {
-    return autoZoomSelect.value === "on";
+    return getRadioValue(autoZoomInputs, "off") === "on";
   }
 
   function syncZoomUi() {
     const autoEnabled = isAutoZoomEnabled();
     if (zoomStatus.kind === "idle") {
-      zoomInput.disabled = true;
-      autoZoomSelect.disabled = true;
+      setRadioDisabled(autoZoomInputs, true);
       zoomHint.textContent = zoomStatus.message;
       autoZoomHint.textContent = "チェック開始後に利用できます";
+      syncStepperButtons();
       return;
     }
     if (zoomStatus.kind !== "ready") {
-      zoomInput.disabled = true;
-      autoZoomSelect.disabled = true;
+      setRadioDisabled(autoZoomInputs, true);
       zoomHint.textContent = zoomStatus.message;
       autoZoomHint.textContent = "ズーム非対応のため利用できません";
+      syncStepperButtons();
       return;
     }
-    autoZoomSelect.disabled = false;
+    setRadioDisabled(autoZoomInputs, false);
     if (autoEnabled) {
-      zoomInput.disabled = true;
       zoomHint.textContent = "自動ズーム中です";
       autoZoomHint.textContent = "顔サイズに合わせて自動調整します";
     } else {
-      zoomInput.disabled = false;
       zoomHint.textContent = zoomStatus.message;
       autoZoomHint.textContent = "手動でズーム調整します";
     }
+    syncStepperButtons();
   }
 
   function setZoomAvailability(kind, message) {
@@ -785,10 +1017,21 @@ const HTML = `<!doctype html>
   }
 
   function resolveDefaultZoom() {
-    const stored = safeNumber(zoomInput.value, defaultSettings.zoom);
+    const stored = safeNumber(settingsState.zoom, defaultSettings.zoom);
     if (!zoomCapabilities?.zoom) return stored;
     const { min } = zoomCapabilities.zoom;
     return clampZoom(Number.isFinite(stored) ? stored : min ?? defaultSettings.zoom);
+  }
+
+  function resolveZoomUiStep() {
+    if (!zoomCapabilities?.zoom) return 0.1;
+    const { min, max, step } = zoomCapabilities.zoom;
+    const safeMin = Number.isFinite(min) ? min : 1;
+    const safeMax = Number.isFinite(max) ? max : safeMin;
+    const range = Math.max(0, safeMax - safeMin);
+    const segmented = range > 0 ? range / ZOOM_STEP_SEGMENTS : 0.1;
+    const baseStep = Number.isFinite(step) && step > 0 ? step : 0.1;
+    return Number(Math.max(baseStep, segmented).toFixed(3));
   }
 
   async function applyZoom(value) {
@@ -799,8 +1042,9 @@ const HTML = `<!doctype html>
     try {
       const zoomValue = clampZoom(value);
       await track.applyConstraints({ advanced: [{ zoom: zoomValue }] });
-      zoomInput.value = String(zoomValue);
-      zoomVal.textContent = zoomValue.toFixed(2) + "x";
+      settingsState.zoom = zoomValue;
+      renderZoom();
+      syncStepperButtons();
     } catch (e) {
       console.warn("ズーム適用に失敗:", e);
     }
@@ -808,6 +1052,7 @@ const HTML = `<!doctype html>
 
   function setupZoomControls() {
     zoomCapabilities = null;
+    zoomUiStep = 0.1;
     const track = stream?.getVideoTracks?.()[0];
     if (!track?.getCapabilities) {
       setZoomAvailability("unsupported", "ズーム非対応の端末です");
@@ -819,17 +1064,15 @@ const HTML = `<!doctype html>
       return;
     }
     zoomCapabilities = capabilities;
-    const { min, max, step } = capabilities.zoom;
-    zoomInput.min = String(min ?? 1);
-    zoomInput.max = String(max ?? 1);
-    zoomInput.step = String(step ?? 0.1);
-    setZoomAvailability("ready", "スライダーでズーム調整できます");
+    zoomUiStep = resolveZoomUiStep();
+    setZoomAvailability("ready", "ボタンでズーム調整できます");
     const current = track.getSettings?.().zoom;
     const initial = clampZoom(
       Number.isFinite(current) ? current : resolveDefaultZoom()
     );
-    zoomInput.value = String(initial);
-    zoomVal.textContent = initial.toFixed(2) + "x";
+    settingsState.zoom = initial;
+    renderZoom();
+    syncStepperButtons();
     applyZoom(initial);
   }
 
@@ -837,7 +1080,7 @@ const HTML = `<!doctype html>
     const track = stream?.getVideoTracks?.()[0];
     const current = track?.getSettings?.().zoom;
     if (Number.isFinite(current)) return current;
-    return safeNumber(zoomInput.value, defaultSettings.zoom);
+    return safeNumber(settingsState.zoom, defaultSettings.zoom);
   }
 
   function calcFaceSize(landmarks) {
@@ -974,7 +1217,7 @@ const HTML = `<!doctype html>
 
   async function startStream() {
     updateVideoMirror();
-    const facingMode = cameraSelect.value || defaultSettings.camera;
+    const facingMode = getCameraMode();
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode,
@@ -1142,10 +1385,10 @@ const HTML = `<!doctype html>
         // detectForVideo(video, timestampMs) は同期実行です。
         const result = faceLandmarker.detectForVideo(video, nowMs);
 
-        const openThr = safeNumber(thr.value, defaultSettings.threshold);
-        const holdMs = Math.max(0, safeNumber(holdInput.value, defaultSettings.holdMs));
-        const coolMs = Math.max(0, safeNumber(coolInput.value, defaultSettings.coolMs));
-        const missingMs = Math.max(0, safeNumber(missingInput.value, defaultSettings.missingMs));
+        const openThr = settingsState.threshold;
+        const holdMs = settingsState.holdMs;
+        const coolMs = settingsState.coolMs;
+        const missingMs = settingsState.missingMs;
 
         const faceCount = result?.faceLandmarks?.length ?? 0;
         const hasFace = faceCount > 0;
