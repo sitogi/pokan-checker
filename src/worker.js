@@ -350,7 +350,9 @@ const HTML = `<!doctype html>
     .stepper {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
+      width: 100%;
     }
 
     .stepper-btn {
@@ -383,10 +385,11 @@ const HTML = `<!doctype html>
     }
 
     .choice {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      height: 46px;
       min-height: 46px;
       padding: 8px 10px;
       border: 2px solid #dfe6ff;
@@ -400,10 +403,15 @@ const HTML = `<!doctype html>
     }
 
     .choice input[type="radio"] {
-      width: 19px;
-      height: 19px;
-      margin: 0;
-      accent-color: #4d7cff;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      border: 0;
+      padding: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+      white-space: nowrap;
     }
 
     .choice.is-disabled {
@@ -419,6 +427,10 @@ const HTML = `<!doctype html>
     .field-note {
       font-size: 12px;
       color: var(--muted);
+    }
+
+    .field-note:empty {
+      display: none;
     }
 
     .value {
@@ -502,7 +514,7 @@ const HTML = `<!doctype html>
   <section class="panel">
     <div class="panel-title">設定</div>
     <div class="settings-grid">
-      <label class="field">
+      <div class="field">
         <span class="field-label">カメラ</span>
         <div class="choice-group">
           <label class="choice">
@@ -514,29 +526,9 @@ const HTML = `<!doctype html>
             <span>リア</span>
           </label>
         </div>
-      </label>
+      </div>
 
-      <label class="field">
-        <span class="field-label">口開き閾値 (jawOpen)</span>
-        <div class="stepper">
-          <button id="thrDown" class="stepper-btn" type="button" aria-label="口開き閾値を下げる">-</button>
-          <span id="thrVal" class="value">0.08</span>
-          <button id="thrUp" class="stepper-btn" type="button" aria-label="口開き閾値を上げる">+</button>
-        </div>
-        <span class="field-note">0.05 から 0.15 まで 0.01 刻みで調整します</span>
-      </label>
-
-      <label class="field">
-        <span class="field-label">ズーム</span>
-        <div class="stepper">
-          <button id="zoomDown" class="stepper-btn" type="button" aria-label="ズームを下げる">-</button>
-          <span id="zoomVal" class="value">1.00x</span>
-          <button id="zoomUp" class="stepper-btn" type="button" aria-label="ズームを上げる">+</button>
-        </div>
-        <span id="zoomHint" class="field-note">対応端末のみ利用できます</span>
-      </label>
-
-      <label class="field">
+      <div class="field">
         <span class="field-label">自動ズーム</span>
         <div class="choice-group">
           <label class="choice">
@@ -548,38 +540,58 @@ const HTML = `<!doctype html>
             <span>ON</span>
           </label>
         </div>
-        <span id="autoZoomHint" class="field-note">顔サイズに合わせてズームを調整します</span>
-      </label>
+        <span id="autoZoomHint" class="field-note"></span>
+      </div>
 
-      <label class="field">
+      <div class="field">
+        <span class="field-label">ズーム</span>
+        <div class="stepper">
+          <button id="zoomDown" class="stepper-btn" type="button" aria-label="ズームを下げる">-</button>
+          <span id="zoomVal" class="value">1.00x</span>
+          <button id="zoomUp" class="stepper-btn" type="button" aria-label="ズームを上げる">+</button>
+        </div>
+        <span id="zoomHint" class="field-note"></span>
+      </div>
+
+      <div class="field">
+        <span class="field-label">口開き閾値 (小さいほどシビア)</span>
+        <div class="stepper">
+          <button id="thrDown" class="stepper-btn" type="button" aria-label="口開き閾値を下げる">-</button>
+          <span id="thrVal" class="value">5</span>
+          <button id="thrUp" class="stepper-btn" type="button" aria-label="口開き閾値を上げる">+</button>
+        </div>
+        <span class="field-note"></span>
+      </div>
+
+      <div class="field">
         <span class="field-label">継続判定</span>
         <div class="stepper">
           <button id="holdDown" class="stepper-btn" type="button" aria-label="継続判定を減らす">-</button>
           <span id="holdVal" class="value">5 秒</span>
           <button id="holdUp" class="stepper-btn" type="button" aria-label="継続判定を増やす">+</button>
         </div>
-        <span class="field-note">1 秒単位で調整します</span>
-      </label>
+        <span class="field-note"></span>
+      </div>
 
-      <label class="field">
+      <div class="field">
         <span class="field-label">クールダウン</span>
         <div class="stepper">
           <button id="coolDown" class="stepper-btn" type="button" aria-label="クールダウンを減らす">-</button>
           <span id="coolVal" class="value">3 秒</span>
           <button id="coolUp" class="stepper-btn" type="button" aria-label="クールダウンを増やす">+</button>
         </div>
-        <span class="field-note">1 秒単位で調整します</span>
-      </label>
+        <span class="field-note"></span>
+      </div>
 
-      <label class="field">
+      <div class="field">
         <span class="field-label">顔未検出アラート</span>
         <div class="stepper">
           <button id="missingDown" class="stepper-btn" type="button" aria-label="顔未検出アラートを減らす">-</button>
           <span id="missingVal" class="value">3 秒</span>
           <button id="missingUp" class="stepper-btn" type="button" aria-label="顔未検出アラートを増やす">+</button>
         </div>
-        <span class="field-note">1 秒単位で調整します</span>
-      </label>
+        <span class="field-note"></span>
+      </div>
     </div>
   </section>
 
@@ -636,14 +648,15 @@ const HTML = `<!doctype html>
   const AUTO_ZOOM_INTERVAL_MS = 220;
   const THRESHOLD_MIN = 0.05;
   const THRESHOLD_MAX = 0.15;
-  const THRESHOLD_STEP = 0.01;
+  const THRESHOLD_SCALE_MIN = 1;
+  const THRESHOLD_SCALE_MAX = 10;
   const DURATION_STEP_MS = 1000;
   const ZOOM_STEP_SEGMENTS = 10;
   const EPSILON = 1e-6;
 
   const defaultSettings = {
     camera: "user",
-    threshold: 0.08,
+    threshold: 5,
     zoom: 1,
     autoZoom: false,
     holdMs: 5000,
@@ -679,7 +692,7 @@ const HTML = `<!doctype html>
   let faceMissingSince = null;
   let lastAlertAt = 0;
   let lastInferAt = 0;
-  let zoomStatus = { kind: "idle", message: "チェック開始後にズームを利用できます" };
+  let zoomStatus = { kind: "idle", message: "" };
   let lastAutoZoomAt = 0;
   let autoZoomBusy = false;
   let zoomUiStep = 0.1;
@@ -713,12 +726,29 @@ const HTML = `<!doctype html>
     });
   }
 
-  function clampThreshold(value) {
+  function resolveThresholdScale(value) {
     const n = safeNumber(value, defaultSettings.threshold);
-    const clamped = Math.min(THRESHOLD_MAX, Math.max(THRESHOLD_MIN, n));
-    const stepped =
-      Math.round((clamped - THRESHOLD_MIN) / THRESHOLD_STEP) * THRESHOLD_STEP + THRESHOLD_MIN;
-    return Number(stepped.toFixed(2));
+    const scale = Math.round(n);
+    if (scale >= THRESHOLD_SCALE_MIN && scale <= THRESHOLD_SCALE_MAX) {
+      return scale;
+    }
+    if (n >= THRESHOLD_MIN && n <= THRESHOLD_MAX) {
+      const ratio = (n - THRESHOLD_MIN) / (THRESHOLD_MAX - THRESHOLD_MIN);
+      return Math.round(THRESHOLD_SCALE_MIN + ratio * (THRESHOLD_SCALE_MAX - THRESHOLD_SCALE_MIN));
+    }
+    return defaultSettings.threshold;
+  }
+
+  function clampThresholdScale(value) {
+    const n = Math.round(safeNumber(value, defaultSettings.threshold));
+    return Math.min(THRESHOLD_SCALE_MAX, Math.max(THRESHOLD_SCALE_MIN, n));
+  }
+
+  function thresholdFromScale(scale) {
+    const safeScale = clampThresholdScale(scale);
+    const ratio = (safeScale - THRESHOLD_SCALE_MIN) / (THRESHOLD_SCALE_MAX - THRESHOLD_SCALE_MIN);
+    const value = THRESHOLD_MIN + ratio * (THRESHOLD_MAX - THRESHOLD_MIN);
+    return Number(value.toFixed(5));
   }
 
   function normalizeDurationMs(value, fallbackMs) {
@@ -731,7 +761,7 @@ const HTML = `<!doctype html>
   }
 
   function renderThreshold() {
-    thrVal.textContent = settingsState.threshold.toFixed(2);
+    thrVal.textContent = String(settingsState.threshold);
   }
 
   function renderZoom() {
@@ -803,7 +833,7 @@ const HTML = `<!doctype html>
   function applySettings(settings) {
     setRadioValue(cameraModeInputs, settings.camera, defaultSettings.camera);
     setRadioValue(autoZoomInputs, settings.autoZoom ? "on" : "off", "off");
-    settingsState.threshold = clampThreshold(settings.threshold);
+    settingsState.threshold = clampThresholdScale(resolveThresholdScale(settings.threshold));
     settingsState.zoom = safeNumber(settings.zoom, defaultSettings.zoom);
     settingsState.holdMs = normalizeDurationMs(settings.holdMs, defaultSettings.holdMs);
     settingsState.coolMs = normalizeDurationMs(settings.coolMs, defaultSettings.coolMs);
@@ -816,7 +846,7 @@ const HTML = `<!doctype html>
   }
 
   function adjustThreshold(direction) {
-    const next = clampThreshold(settingsState.threshold + direction * THRESHOLD_STEP);
+    const next = clampThresholdScale(settingsState.threshold + direction);
     if (next === settingsState.threshold) {
       syncStepperButtons();
       return;
@@ -841,8 +871,8 @@ const HTML = `<!doctype html>
   }
 
   function syncStepperButtons() {
-    thrDownBtn.disabled = settingsState.threshold <= THRESHOLD_MIN + EPSILON;
-    thrUpBtn.disabled = settingsState.threshold >= THRESHOLD_MAX - EPSILON;
+    thrDownBtn.disabled = settingsState.threshold <= THRESHOLD_SCALE_MIN;
+    thrUpBtn.disabled = settingsState.threshold >= THRESHOLD_SCALE_MAX;
     holdDownBtn.disabled = settingsState.holdMs <= 0;
     coolDownBtn.disabled = settingsState.coolMs <= 0;
     missingDownBtn.disabled = settingsState.missingMs <= 0;
@@ -977,31 +1007,31 @@ const HTML = `<!doctype html>
     const autoEnabled = isAutoZoomEnabled();
     if (zoomStatus.kind === "idle") {
       setRadioDisabled(autoZoomInputs, true);
-      zoomHint.textContent = zoomStatus.message;
-      autoZoomHint.textContent = "チェック開始後に利用できます";
+      zoomHint.textContent = "";
+      autoZoomHint.textContent = "";
       syncStepperButtons();
       return;
     }
     if (zoomStatus.kind !== "ready") {
       setRadioDisabled(autoZoomInputs, true);
-      zoomHint.textContent = zoomStatus.message;
-      autoZoomHint.textContent = "ズーム非対応のため利用できません";
+      zoomHint.textContent = "";
+      autoZoomHint.textContent = "";
       syncStepperButtons();
       return;
     }
     setRadioDisabled(autoZoomInputs, false);
     if (autoEnabled) {
-      zoomHint.textContent = "自動ズーム中です";
-      autoZoomHint.textContent = "顔サイズに合わせて自動調整します";
+      zoomHint.textContent = "";
+      autoZoomHint.textContent = "";
     } else {
-      zoomHint.textContent = zoomStatus.message;
-      autoZoomHint.textContent = "手動でズーム調整します";
+      zoomHint.textContent = "";
+      autoZoomHint.textContent = "";
     }
     syncStepperButtons();
   }
 
-  function setZoomAvailability(kind, message) {
-    zoomStatus = { kind, message };
+  function setZoomAvailability(kind) {
+    zoomStatus = { kind, message: "" };
     syncZoomUi();
   }
 
@@ -1385,7 +1415,7 @@ const HTML = `<!doctype html>
         // detectForVideo(video, timestampMs) は同期実行です。
         const result = faceLandmarker.detectForVideo(video, nowMs);
 
-        const openThr = settingsState.threshold;
+        const openThr = thresholdFromScale(settingsState.threshold);
         const holdMs = settingsState.holdMs;
         const coolMs = settingsState.coolMs;
         const missingMs = settingsState.missingMs;
